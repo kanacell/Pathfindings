@@ -8,7 +8,7 @@ using System.Reflection;
 public static class MonobehaviourExtension
 {
 	#region Public Methods
-	public static void Invoke(this MonoBehaviour _MonoBehaviour, string _MethodName, params object[] _Parameters)
+	public static void CustomInvoke(this MonoBehaviour _MonoBehaviour, string _MethodName, params object[] _Parameters)
 	{
 		MethodInfo methodInfo = FindMethod(_MonoBehaviour, _MethodName, _Parameters);
 		methodInfo.Invoke(_MonoBehaviour, _Parameters);
