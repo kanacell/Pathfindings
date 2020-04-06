@@ -2,15 +2,16 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Pathfinder
+public static class Pathfinder
 {
 	#region Public Methods
-	public Pathfinder(GameGrid _Grid)
-	{
-		m_Grid = _Grid;
-	}
-
-	public Path FindDijkstraPathFromTo(GameTile _Start, GameTile _End)
+	/// <summary>
+	/// Search a path with Dijkstra algorithm
+	/// </summary>
+	/// <param name="_Start">Tile to start from</param>
+	/// <param name="_End">Tile to reach</param>
+	/// <returns>the shortest path from start tile to end tile if it exists, null otherwise</returns>
+	public static Path SearchDijkstraPathFromTo(GameTile _Start, GameTile _End)
 	{
 		if (!_Start || !_End)
 			return null;
@@ -88,24 +89,30 @@ public class Pathfinder
 
 		return null;
 	}
-	#endregion
+    #endregion
 
-	#region Protected Methods
-	#endregion
+    #region Protected Methods
+    #endregion
 
-	#region Private Methods
-	#endregion
+    #region Private Methods
+    #endregion
 
-	#region Getters/Setters
-	#endregion
+    #region Public Attributes
+    #endregion
 
-	#region Public Attributes
-	#endregion
+    #region Protected Attributes
+    #endregion
 
-	#region Protected Attributes
-	#endregion
+    #region Private Attributes
+    #endregion
 
-	#region Private Attributes
-	private GameGrid m_Grid = null;
-	#endregion
+    #region Enumerations
+	public enum PathfindingMode
+	{
+		PM_None,
+		PM_Dijkstra,
+		PM_AStar,
+		PM_HPA
+	}
+    #endregion
 }

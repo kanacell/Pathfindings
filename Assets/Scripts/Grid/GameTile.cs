@@ -12,6 +12,21 @@ public class GameTile : MonoBehaviour
 			return;
 		m_Neighbors.Add(_Neighbor);
 	}
+
+	public void Unmark()
+	{
+		UpdateMeshColor(Color.white);
+	}
+
+	public void MarkAsStart()
+	{
+		UpdateMeshColor(Color.green);
+	}
+
+	public void MarkAsEnd()
+	{
+		UpdateMeshColor(Color.yellow);
+	}
 	#endregion
 
 	#region Protected Methods
@@ -21,6 +36,13 @@ public class GameTile : MonoBehaviour
 	private void InitWeight(int _Weight)
 	{
 		m_Weight = _Weight;
+		m_IsAccessible = m_Weight > 0;
+		if (!m_IsAccessible && m_MeshRenderer)
+		{
+			Material tempMat = new Material(m_MeshRenderer.sharedMaterial);
+			tempMat.color = Color.black;
+			m_MeshRenderer.sharedMaterial = tempMat;
+		}
 	}
 
 	private void FixNullNeighbors()
@@ -32,6 +54,13 @@ public class GameTile : MonoBehaviour
 				m_Neighbors.RemoveAt(i);
 			}
 		}
+	}
+
+	private void UpdateMeshColor(Color _Color)
+	{
+		if (!m_MeshRenderer)
+			return;
+		m_MeshRenderer.material.color = _Color;
 	}
 	#endregion
 
@@ -69,7 +98,8 @@ public class GameTile : MonoBehaviour
 
 	#region Private Attributes
 	[SerializeField] private bool m_IsAccessible = true;
-	[SerializeField, Range(1, 10)] private int m_Weight = 1;
-	private List<GameTile> m_Neighbors = new List<GameTile>(8); // 8 because I assume at most 8 neighbors to a square tile with diagonals
+	[SerializeField, Range(0, 10)] private int m_Weight = 1;
+	[SerializeField] MeshRenderer m_MeshRenderer = null;
+	[SerializeField] private List<GameTile> m_Neighbors = new List<GameTile>(8); // 8 because I assume at most 8 neighbors to a square tile with diagonals
 	#endregion
 }

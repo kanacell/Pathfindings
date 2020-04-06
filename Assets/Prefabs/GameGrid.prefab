@@ -43,6 +43,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef4dc188c866c3a4c898cbf5c654e775, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Dimensions: {x: 10, y: 5}
+  m_GenerationMode: 1
+  m_EditorDimensions: {x: 0, y: 0}
   m_PrefabTile: {fileID: 6517833590402567206, guid: 0f59e73675767504ab8246903105063d,
     type: 3}
+  m_Filename: Map_32.txt
+  m_Dimensions: {x: 0, y: 0}

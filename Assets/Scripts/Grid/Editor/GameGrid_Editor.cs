@@ -1,9 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
-
-using System.Reflection;
 
 [CustomEditor(typeof(GameGrid))]
 public class GameGrid_Editor : Editor
@@ -12,6 +11,19 @@ public class GameGrid_Editor : Editor
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
+
+        /**
+        if (GUILayout.Button("Edit Script"))
+        {
+            var filesnames = Directory.GetFiles(Application.dataPath, m_GameGrid.GetType().ToString() + ".cs", SearchOption.AllDirectories);
+            if (filesnames.Length > 0)
+            {
+                string finalFilename = System.IO.Path.GetFullPath(filesnames[0]);
+                System.Diagnostics.Process.Start("devenv", $" /edit \"{finalFilename}\"");
+            }
+        }
+        /**/
+
         EditorGUILayout.PropertyField(m_GenerationMode);
 
         bool displayGenerationButtons = true;
@@ -53,10 +65,10 @@ public class GameGrid_Editor : Editor
                 {
                     m_GameGrid.CustomInvoke("CleanGrid");
                 }
+                EditorUtility.SetDirty(m_GameGrid);
             }
         }
         serializedObject.ApplyModifiedProperties();
-        //base.OnInspectorGUI();
     }
     #endregion
 
