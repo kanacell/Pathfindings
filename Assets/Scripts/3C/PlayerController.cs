@@ -23,7 +23,7 @@ public class PlayerController : MonoBehaviour
                 break;
             case Pathfinder.PathfindingMode.PM_AStar:
                 chrono.Start();
-                path = null;
+                path = Pathfinder.SearchAStarPathFromTo(m_StartTile, m_EndTile);
                 chrono.Stop();
                 break;
             case Pathfinder.PathfindingMode.PM_HPA:

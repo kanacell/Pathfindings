@@ -33,6 +33,12 @@ public class GameTile : MonoBehaviour
 	#endregion
 
 	#region Private Methods
+	private void InitGridPosition(int _Row, int _Column)
+	{
+		m_GridPosition.x = _Column;
+		m_GridPosition.y = _Row;
+	}
+
 	private void InitWeight(int _Weight)
 	{
 		m_Weight = _Weight;
@@ -81,6 +87,14 @@ public class GameTile : MonoBehaviour
 		}
 	}
 
+	public Vector2Int GridPosition
+	{
+		get
+		{
+			return m_GridPosition;
+		}
+	}
+
 	public IReadOnlyList<GameTile> Neighbors
 	{
 		get
@@ -90,16 +104,11 @@ public class GameTile : MonoBehaviour
 	}
 	#endregion
 
-	#region Public Attributes
-	#endregion
-
-	#region Protected Attributes
-	#endregion
-
 	#region Private Attributes
 	[SerializeField] private bool m_IsAccessible = true;
 	[SerializeField, Range(0, 10)] private int m_Weight = 1;
 	[SerializeField] MeshRenderer m_MeshRenderer = null;
-	[SerializeField] private List<GameTile> m_Neighbors = new List<GameTile>(8); // 8 because I assume at most 8 neighbors to a square tile with diagonals
+	[SerializeField, HideInInspector] private List<GameTile> m_Neighbors = new List<GameTile>(8); // 8 because I assume at most 8 neighbors to a square tile with diagonals
+	[SerializeField] private Vector2Int m_GridPosition = Vector2Int.zero;
 	#endregion
 }

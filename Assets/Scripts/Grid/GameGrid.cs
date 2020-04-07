@@ -147,6 +147,7 @@ public class GameGrid : MonoBehaviour
         GameTile tile = PrefabUtility.InstantiatePrefab(_Prefab, transform) as GameTile;
         tile.transform.localPosition = new Vector3(_Column, 0, m_Dimensions.y - _Row - 1);
         tile.name = $@"Tile [{_Row}; {_Column}]";
+        tile.CustomInvoke("InitGridPosition", _Row, _Column);
 
         /**/
         int indexTile = -1;

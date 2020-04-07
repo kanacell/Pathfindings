@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
@@ -25,18 +24,12 @@ public class Path
 	}
 	#endregion
 
-	#region Protected Methods
-	#endregion
-
-	#region Private Methods
-	#endregion
-
 	#region Getters/Setters
 	public GameTile LastStep
 	{
 		get
 		{
-			return m_Steps.Last();
+			return m_Steps.LastOrDefault();
 		}
 	}
 
