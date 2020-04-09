@@ -1,35 +1,41 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class PlayerController : MonoBehaviour
 {
     #region Public Methods
     public void SearchPath()
     {
+        if (!m_StartTile)
+        {
+            m_StartTile = m_GameGrid.GetTileAt(m_RowStart, m_ColumnStart);
+        }
+
+        if (!m_EndTile)
+        {
+            m_EndTile = m_GameGrid.GetTileAt(m_RowEnd, m_ColumnEnd);
+        }
+
         if (!m_StartTile || !m_EndTile)
             return;
 
         Path path = null;
-        Stopwatch chrono = new Stopwatch();
+        ChronoInfos infos = new ChronoInfos();
         switch (m_PathfindingMode)
         {
             case Pathfinder.PathfindingMode.PM_Dijkstra:
-                chrono.Start();
-                path = Pathfinder.SearchDijkstraPathFromTo(m_StartTile, m_EndTile);
-                chrono.Stop();
+                path = Pathfinder.SearchDijkstraPathFromTo(m_StartTile, m_EndTile, out infos);
                 break;
             case Pathfinder.PathfindingMode.PM_AStar:
-                chrono.Start();
-                path = Pathfinder.SearchAStarPathFromTo(m_StartTile, m_EndTile);
-                chrono.Stop();
+                //path = Pathfinder.AstarWiki(m_StartTile, m_EndTile);
+                path = Pathfinder.AStarCustomBasic(m_StartTile, m_EndTile, out infos);
+                //path = Pathfinder.AStarAlgo(m_StartTile, m_EndTile);
                 break;
             case Pathfinder.PathfindingMode.PM_HPA:
-                chrono.Start();
                 path = null;
-                chrono.Stop();
                 break;
             default:
                 break;
@@ -42,7 +48,14 @@ public class PlayerController : MonoBehaviour
 
         if (m_ChronoText)
         {
-            m_ChronoText.text = $"chrono : {chrono.ElapsedMilliseconds} (ms)";
+            m_ChronoText.text = $"elasped time : {infos.ElapsedTime} ms\n";
+            m_ChronoText.text += $"foreach neighbors : {infos.ForeachNeighborsChrono} ms\n";
+            m_ChronoText.text += $"clone path : {infos.ClonePathChrono} ms\n";
+            m_ChronoText.text += $"extend path : { infos.ExtendPathChrono} ms\n";
+            m_ChronoText.text += $"search open : {infos.SearchInOpenListChrono} ms\n";
+            m_ChronoText.text += $"search close : {infos.SearchInCloseListChrono} ms\n";
+            m_ChronoText.text += $"search open to insert : {infos.SearchInsertionChrono} ms\n";
+            m_ChronoText.text += $"insert open list : {infos.InsertToOpenListChrono} ms\n";
         }
 
         if (path != null)
@@ -54,9 +67,6 @@ public class PlayerController : MonoBehaviour
             m_PathVisualizer.TracePath(path);
         }
     }
-    #endregion
-
-    #region Protected Methods
     #endregion
 
     #region Private Methods
@@ -74,30 +84,17 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void Update()
-    {
-        if (Input.GetMouseButtonDown(0))
-        {
-            MarkAsStart(Input.mousePosition);
-        }
-
-        if (Input.GetMouseButtonDown(1))
-        {
-            MarkAsEnd(Input.mousePosition);
-        }
-    }
-
     private void MarkAsStart(Vector3 _ScreenPos)
     {
+        if (EventSystem.current.IsPointerOverGameObject())
+            return;
+
         Ray screenRay = Camera.main.ScreenPointToRay(_ScreenPos);
         RaycastHit hitInfos;
         if (Physics.Raycast(screenRay, out hitInfos, 100))
         {
             GameTile tile = hitInfos.transform.GetComponent<GameTile>();
-            if (!tile)
-                return;
-
-            if (tile == m_StartTile)
+            if (!tile || tile == m_StartTile || !tile.IsAccessible)
                 return;
 
             m_StartTile?.Unmark();
@@ -108,15 +105,15 @@ public class PlayerController : MonoBehaviour
 
     private void MarkAsEnd(Vector3 _ScreenPos)
     {
+        if (EventSystem.current.IsPointerOverGameObject())
+            return;
+
         Ray screenRay = Camera.main.ScreenPointToRay(_ScreenPos);
         RaycastHit hitInfos;
         if (Physics.Raycast(screenRay, out hitInfos, 100))
         {
             GameTile tile = hitInfos.transform.GetComponent<GameTile>();
-            if (!tile)
-                return;
-
-            if (tile == m_EndTile)
+            if (!tile || tile == m_EndTile || !tile.IsAccessible)
                 return;
 
             m_EndTile?.Unmark();
@@ -124,26 +121,6 @@ public class PlayerController : MonoBehaviour
             m_EndTile.MarkAsEnd();
         }
     }
-
-    private void MoveCamera()
-    {
-        float horizontalDirection = Input.GetAxisRaw("Horizontal");
-        float verticalDirection = Input.GetAxisRaw("Vertical");
-    }
-
-    private void ZoomCamera()
-    {
-
-    }
-    #endregion
-
-    #region Getters/Setters
-    #endregion
-
-    #region Public Attributes
-    #endregion
-
-    #region Protected Attributes
     #endregion
 
     #region Private Attributes
@@ -159,6 +136,13 @@ public class PlayerController : MonoBehaviour
 
     [Header("Inputs")]
     [SerializeField] private PlayerInputs m_PlayerInputs = null;
+
+    [Header("Grid reference")]
+    [SerializeField] private GameGrid m_GameGrid = null;
+    [SerializeField] private int m_RowStart = 0;
+    [SerializeField] private int m_ColumnStart = 0;
+    [SerializeField] private int m_RowEnd = 0;
+    [SerializeField] private int m_ColumnEnd = 0;
 
     private GameTile m_StartTile = null;
     private GameTile m_EndTile = null;

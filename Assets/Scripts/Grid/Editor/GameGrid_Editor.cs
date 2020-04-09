@@ -4,26 +4,15 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-[CustomEditor(typeof(GameGrid))]
+//[CustomEditor(typeof(GameGrid))]
 public class GameGrid_Editor : Editor
 {
     #region Public Methods
     public override void OnInspectorGUI()
     {
+        base.OnInspectorGUI();
+        /*
         serializedObject.Update();
-
-        /**
-        if (GUILayout.Button("Edit Script"))
-        {
-            var filesnames = Directory.GetFiles(Application.dataPath, m_GameGrid.GetType().ToString() + ".cs", SearchOption.AllDirectories);
-            if (filesnames.Length > 0)
-            {
-                string finalFilename = System.IO.Path.GetFullPath(filesnames[0]);
-                System.Diagnostics.Process.Start("devenv", $" /edit \"{finalFilename}\"");
-            }
-        }
-        /**/
-
         EditorGUILayout.PropertyField(m_GenerationMode);
 
         bool displayGenerationButtons = true;
@@ -45,15 +34,18 @@ public class GameGrid_Editor : Editor
         {
             using (new EditorGUILayout.HorizontalScope())
             {
+                bool tagDirtyGrid = false;
                 if (GUILayout.Button("Create Grid"))
                 {
                     switch ((GameGrid.EGenerationMode)m_GenerationMode.intValue)
                     {
                         case GameGrid.EGenerationMode.GM_File:
                             m_GameGrid.CustomInvoke("InitGrid", m_Filename.stringValue);
+                            tagDirtyGrid = true;
                             break;
                         case GameGrid.EGenerationMode.GM_Uniforme:
                             m_GameGrid.CustomInvoke("InitGrid", m_GridDimension.vector2IntValue, m_TilePrefab.objectReferenceValue);
+                            tagDirtyGrid = true;
                             break;
                         default:
                             break;
@@ -65,10 +57,15 @@ public class GameGrid_Editor : Editor
                 {
                     m_GameGrid.CustomInvoke("CleanGrid");
                 }
-                EditorUtility.SetDirty(m_GameGrid);
+
+                if (tagDirtyGrid)
+                {
+                    EditorUtility.SetDirty(m_GameGrid);
+                }
             }
         }
         serializedObject.ApplyModifiedProperties();
+        */
     }
     #endregion
 

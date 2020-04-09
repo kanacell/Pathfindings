@@ -16,7 +16,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 4294967295
   m_IsActive: 1
 --- !u!4 &1899955528823670987
 Transform:
@@ -48,6 +48,8 @@ MonoBehaviour:
   m_IsAccessible: 1
   m_Weight: 1
   m_MeshRenderer: {fileID: 6203328848110897260}
+  m_Neighbors: []
+  m_GridPosition: {x: 0, y: 0}
 --- !u!65 &4083063930752273231
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -78,7 +80,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 4294967295
   m_IsActive: 1
 --- !u!4 &9041722408328268199
 Transform:

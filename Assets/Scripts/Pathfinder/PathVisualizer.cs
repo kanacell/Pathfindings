@@ -19,23 +19,11 @@ public class PathVisualizer : MonoBehaviour
 	}
 	#endregion
 
-	#region Protected Methods
-	#endregion
-
 	#region Private Methods
 	private void Awake()
 	{
 		m_LineRenderer = GetComponent<LineRenderer>();
 	}
-	#endregion
-
-	#region Getters/Setters
-	#endregion
-
-	#region Public Attributes
-	#endregion
-
-	#region Protected Attributes
 	#endregion
 
 	#region Private Attributes

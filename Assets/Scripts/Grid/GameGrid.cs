@@ -11,7 +11,7 @@ using UnityEditor;
 public class GameGrid : MonoBehaviour
 {
     #region Public Methods
-    public GameTile GetNodeAtLocation(int _Row, int _Column)
+    public GameTile GetTileAt(int _Row, int _Column)
     {
         /**
         if (m_Tiles == null || _Row < 0 || _Row >= m_Dimensions.y || _Column < 0 || _Column >= m_Dimensions.x)
@@ -56,10 +56,16 @@ public class GameGrid : MonoBehaviour
 
         // Setup the camera to the middle map
         Camera.main.orthographicSize = Mathf.Max(m_Dimensions.x, m_Dimensions.y) / 2.0f;
-        Camera.main.transform.position = new Vector3(m_Dimensions.x / 2.0f - 0.5f, 1, m_Dimensions.y / 2.0f - 0.5f);
+        Camera.main.transform.position = new Vector3(m_Dimensions.x / 2.0f - 0.5f, 5, m_Dimensions.y / 2.0f - 0.5f);
     }
 
-    private void InitGrid(string _Filename)
+    [ContextMenu("Init grid from file")]
+    private void InitGridFromFile()
+    {
+        InitGrid(m_Filename);
+    }
+
+    public void InitGrid(string _Filename)
     {
         if (!m_PrefabTile)
             return;
@@ -103,16 +109,20 @@ public class GameGrid : MonoBehaviour
         {
             for (int j = 0; j < columns; j++)
             {
-                int weight = lines[i + 2][j] - '0';
+                int weight = (int)char.GetNumericValue(lines[i + 2][j]);
                 int indexTile = GetIndex(i, j);
                 m_Tiles[indexTile].CustomInvoke("InitWeight", weight);
+                //m_Tiles[indexTile].InitWeight(weight);
             }
         }
+
+
     }
 
     /// <summary>
     /// Destroy all tiles
     /// </summary>
+    [ContextMenu("clean grid")]
     private void CleanGrid()
     {
         if (m_Tiles == null)
@@ -126,6 +136,12 @@ public class GameGrid : MonoBehaviour
             }
         }
         m_Tiles = null;
+    }
+
+    [ContextMenu("Clean static methods")]
+    private void CleanMethods()
+    {
+        this.ClearStaticCache();
     }
 
     /// <summary>
@@ -144,9 +160,9 @@ public class GameGrid : MonoBehaviour
 
     private GameTile CreateTile(GameTile _Prefab, int _Row, int _Column)
     {
-        GameTile tile = PrefabUtility.InstantiatePrefab(_Prefab, transform) as GameTile;
+        GameTile tile = Instantiate<GameTile>(_Prefab, m_GridAnchor);
         tile.transform.localPosition = new Vector3(_Column, 0, m_Dimensions.y - _Row - 1);
-        tile.name = $@"Tile [{_Row}; {_Column}]";
+        tile.name = $"Tile [{_Row}; {_Column}]";
         tile.CustomInvoke("InitGridPosition", _Row, _Column);
 
         /**/
@@ -176,6 +192,7 @@ public class GameGrid : MonoBehaviour
         tile.CustomInvoke("InitWeight", _Weight);
         return tile;
     }
+#endif
 
     private int GetIndex(int _Row, int _Column)
     {
@@ -183,7 +200,6 @@ public class GameGrid : MonoBehaviour
             return -1;
         return _Row * m_Dimensions.x + _Column;
     }
-#endif
     #endregion
 
     #region Getters/Setters
@@ -196,15 +212,10 @@ public class GameGrid : MonoBehaviour
     }
     #endregion
 
-    #region Public Attributes
-    #endregion
-
-    #region Protected Attributes
-    #endregion
-
     #region Private Attributes
     [Header("Grid Generation Settings")]
     [SerializeField] private EGenerationMode m_GenerationMode = EGenerationMode.GM_None;
+    [SerializeField] private Transform m_GridAnchor = null;
 
     [Header("Uniform Settings")]
     [SerializeField] private Vector2Int m_EditorDimensions = Vector2Int.zero;
@@ -213,8 +224,10 @@ public class GameGrid : MonoBehaviour
     [Header("File Settings")]
     [SerializeField] private string m_Filename = string.Empty;
 
-    [SerializeField] private Vector2Int m_Dimensions = Vector2Int.zero;
-    [SerializeField] private GameTile[] m_Tiles = null;
+    [SerializeField, HideInInspector] private Vector2Int m_Dimensions = Vector2Int.zero;
+    [SerializeField, HideInInspector] private GameTile[] m_Tiles = null;
+
+    //[SerializeField] private 
     #endregion
 
     #region Enumerations

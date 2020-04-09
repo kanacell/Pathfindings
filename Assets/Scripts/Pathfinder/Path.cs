@@ -2,7 +2,7 @@
 using UnityEngine;
 using System.Linq;
 
-public class Path
+public class Path : System.IComparable
 {
 	#region Public Methods
 	public Path(GameTile _Tile)
@@ -21,6 +21,14 @@ public class Path
 	{
 		m_Steps.Add(_Tile);
 		m_Weight += _Tile.Weight;
+	}
+
+	public virtual int CompareTo(object obj)
+	{
+		Path otherPath = obj as Path;
+		if (otherPath == null)
+			return 1;
+		return Weight.CompareTo(otherPath.Weight);
 	}
 	#endregion
 
@@ -51,7 +59,7 @@ public class Path
 	#endregion
 
 	#region Private Attributes
-	private List<GameTile> m_Steps = new List<GameTile>();
+	protected List<GameTile> m_Steps = new List<GameTile>(10); // 10 as arbritary value to initial capacity
 	private int m_Weight = 0;
 	#endregion
 }

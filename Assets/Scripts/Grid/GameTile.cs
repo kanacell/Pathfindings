@@ -1,114 +1,125 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 [SelectionBase]
 public class GameTile : MonoBehaviour
 {
-	#region Public Methods
-	public void AddNeighbor(GameTile _Neighbor)
-	{
-		if (!_Neighbor)
-			return;
-		m_Neighbors.Add(_Neighbor);
-	}
+    #region Public Methods
+    public void AddNeighbor(GameTile _Neighbor)
+    {
+        if (!_Neighbor)
+            return;
+        m_Neighbors.Add(_Neighbor);
+    }
 
-	public void Unmark()
-	{
-		UpdateMeshColor(Color.white);
-	}
+    public void Unmark()
+    {
+        UpdateMeshColor(Color.white);
+    }
 
-	public void MarkAsStart()
-	{
-		UpdateMeshColor(Color.green);
-	}
+    public void MarkAsStart()
+    {
+        UpdateMeshColor(Color.green);
+    }
 
-	public void MarkAsEnd()
-	{
-		UpdateMeshColor(Color.yellow);
-	}
-	#endregion
+    public void MarkAsEnd()
+    {
+        UpdateMeshColor(Color.red);
+    }
 
-	#region Protected Methods
-	#endregion
+    public void MarkOnProgress()
+    {
+        UpdateMeshColor(Color.cyan);
+    }
 
-	#region Private Methods
-	private void InitGridPosition(int _Row, int _Column)
-	{
-		m_GridPosition.x = _Column;
-		m_GridPosition.y = _Row;
-	}
+    public void MarkDone()
+    {
+        UpdateMeshColor(Color.magenta);
+    }
+    #endregion
 
-	private void InitWeight(int _Weight)
-	{
-		m_Weight = _Weight;
-		m_IsAccessible = m_Weight > 0;
-		if (!m_IsAccessible && m_MeshRenderer)
-		{
-			Material tempMat = new Material(m_MeshRenderer.sharedMaterial);
-			tempMat.color = Color.black;
-			m_MeshRenderer.sharedMaterial = tempMat;
-		}
-	}
+    #region Protected Methods
+    #endregion
 
-	private void FixNullNeighbors()
-	{
-		for(int i = m_Neighbors.Count - 1; i >= 0; i--)
-		{
-			if (!m_Neighbors[i])
-			{
-				m_Neighbors.RemoveAt(i);
-			}
-		}
-	}
+    #region Private Methods
+    private void InitGridPosition(int _Row, int _Column)
+    {
+        m_GridPosition.x = _Column;
+        m_GridPosition.y = _Row;
+    }
 
-	private void UpdateMeshColor(Color _Color)
-	{
-		if (!m_MeshRenderer)
-			return;
-		m_MeshRenderer.material.color = _Color;
-	}
-	#endregion
+    private void InitWeight(int _Weight)
+    {
+        m_Weight = _Weight;
+        m_IsAccessible = m_Weight > 0;
+        if (!m_IsAccessible && m_MeshRenderer)
+        {
+            Material tempMat = new Material(m_MeshRenderer.sharedMaterial);
+            tempMat.color = Color.black;
+            m_MeshRenderer.sharedMaterial = tempMat;
+        }
+    }
 
-	#region Getters/Setters
-	public bool IsAccessible
-	{
-		get
-		{
-			return m_IsAccessible;
-		}
-	}
+    private void FixNullNeighbors()
+    {
+        for (int i = m_Neighbors.Count - 1; i >= 0; i--)
+        {
+            if (!m_Neighbors[i])
+            {
+                m_Neighbors.RemoveAt(i);
+            }
+        }
+    }
 
-	public int Weight
-	{
-		get
-		{
-			return m_Weight;
-		}
-	}
+    private void UpdateMeshColor(Color _Color)
+    {
+        if (!m_MeshRenderer)
+            return;
+        m_MeshRenderer.material.color = _Color;
+    }
+    #endregion
 
-	public Vector2Int GridPosition
-	{
-		get
-		{
-			return m_GridPosition;
-		}
-	}
+    #region Getters/Setters
+    public bool IsAccessible
+    {
+        get
+        {
+            return m_IsAccessible;
+        }
+    }
 
-	public IReadOnlyList<GameTile> Neighbors
-	{
-		get
-		{
-			return m_Neighbors;
-		}
-	}
-	#endregion
+    public int Weight
+    {
+        get
+        {
+            return m_Weight;
+        }
+    }
 
-	#region Private Attributes
-	[SerializeField] private bool m_IsAccessible = true;
-	[SerializeField, Range(0, 10)] private int m_Weight = 1;
-	[SerializeField] MeshRenderer m_MeshRenderer = null;
-	[SerializeField, HideInInspector] private List<GameTile> m_Neighbors = new List<GameTile>(8); // 8 because I assume at most 8 neighbors to a square tile with diagonals
-	[SerializeField] private Vector2Int m_GridPosition = Vector2Int.zero;
-	#endregion
+    public Vector2Int GridPosition
+    {
+        get
+        {
+            return m_GridPosition;
+        }
+    }
+
+    public IReadOnlyList<GameTile> Neighbors
+    {
+        get
+        {
+            return m_Neighbors;
+        }
+    }
+    #endregion
+
+    #region Private Attributes
+    [SerializeField] private bool m_IsAccessible = true;
+    [SerializeField, Range(0, 10)] private int m_Weight = 1;
+    [SerializeField] MeshRenderer m_MeshRenderer = null;
+    [SerializeField] private List<GameTile> m_Neighbors = new List<GameTile>(8); // 8 because I assume at most 8 neighbors to a square tile with diagonals
+    [SerializeField] private Vector2Int m_GridPosition = Vector2Int.zero;
+    #endregion
 }
