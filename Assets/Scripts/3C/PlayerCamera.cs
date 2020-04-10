@@ -17,17 +17,17 @@ public class PlayerCamera : MonoBehaviour
 
 	private void MoveHorizontal(float _Direction)
 	{
-		transform.position += _Direction * Vector3.right * m_MoveSpeed;
+		transform.position += _Direction * Vector3.right * m_MoveSpeed * Time.deltaTime;
 	}
 
 	private void MoveVertical(float _Direction)
 	{
-		transform.position += _Direction * Vector3.forward * m_MoveSpeed;
+		transform.position += _Direction * Vector3.forward * m_MoveSpeed * Time.deltaTime;
 	}
 
 	private void Zoom(float _Direction)
 	{
-		Camera.main.orthographicSize = Mathf.Max(Camera.main.orthographicSize -_Direction * m_ZoomSpeed, 1);
+		Camera.main.orthographicSize = Mathf.Max(Camera.main.orthographicSize -_Direction * m_ZoomSpeed * Time.deltaTime, 5);
 	}
 	#endregion
 

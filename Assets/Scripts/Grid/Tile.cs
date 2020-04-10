@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 
-[System.Serializable]
 public class Tile
 {
 	#region Public Methods
@@ -41,6 +40,14 @@ public class Tile
 		get
 		{
 			return m_Weight > 0;
+		}
+	}
+
+	public int Weight
+	{
+		get
+		{
+			return m_Weight;
 		}
 	}
 

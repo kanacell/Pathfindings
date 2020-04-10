@@ -17,301 +17,278 @@ public static class Pathfinder
 
     #region Public Methods
     /// <summary>
-    /// Search a path with Dijkstra algorithm
+    /// Search a path with Dijkstra algorithm.
     /// </summary>
     /// <param name="_Start">Tile to start from</param>
     /// <param name="_End">Tile to reach</param>
+    /// <param name="_ChronoInfos">Struct with times value to evaluate performance</param>
+    /// <param name="_MaxSeconds">Max time allowed to search a solution. If value is negative, no time limit applied</param>
     /// <returns>the shortest path from start tile to end tile if it exists, null otherwise</returns>
-    public static Path SearchDijkstraPathFromTo(GameTile _Start, GameTile _End, out ChronoInfos _infos)
+    public static Path SearchDijkstraPathFromTo(Tile _Start, Tile _End, out ChronoInfos _ChronoInfos, float _TimeLimit)
     {
-        searchInOpenListChrono = 0f;
-        foreachNeighborsChrono = 0f;
-        clonePathChrono = 0f;
-        searchInsertionChrono = 0f;
-        searchInCloseListChrono = 0f;
-        extendPathChrono = 0f;
+        StartChrono();
 
-        if (!_Start || !_End)
+        if (_Start == null || !_Start.IsAccessible || _End == null || !_End.IsAccessible)
         {
-            _infos = ChronoInfos.InfosNone;
+            _ChronoInfos = ChronoInfos.InfosNone;
             return null;
         }
 
-        Path firstPath = new Path(_Start);
+        List<Path> openList = new List<Path> { new Path(_Start) };
+        HashSet<Tile> closeHashSet = new HashSet<Tile>();
+        // Use a comparer to sort the open list by descending order on path weight.
+        // This way, the shortest path in open list is at end
+        //PathComparer pComparer = new PathComparer(false);
+        CustomComparer<Path> pComparer = new CustomComparer<Path>(false);
 
-        List<Path> openList = new List<Path> { firstPath };
-        //List<Path> closeList = new List<Path>();
-        Dictionary<GameTile, int> closePaths = new Dictionary<GameTile, int>();
-        int shortest = -1;
-
-        chrono.Restart();
         while (openList.Count > 0)
         {
-            // get the path at index 0 to extend. The open list is assumed as always sorted by path weight
-            Path pathToExtend = openList[0];
+            // Stop search if the chrono reached the time limit.
+            // It avoids to get infinite loop or too long to find a solution. Mainly usefull to debug
+            if (_TimeLimit > 0 && chrono.Elapsed.TotalSeconds > _TimeLimit)
+            {
+                _ChronoInfos = StopChrono(_Start, _End);
+                return null;
+            }
 
-            // if last step is the end, then return this path
+            // Take the last path (which is the shortest as we sort the open list by descending weight)
+            Path pathToExtend = openList.Last();
+
+            // If last tile is the end, then return this path
             if (pathToExtend.LastStep == _End)
             {
-                _infos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End);
                 return pathToExtend;
             }
 
-            int weightToExtend = pathToExtend.Weight;
-            GameTile stepToExtend = pathToExtend.LastStep;
+            // Remove the current path from open list
+            removeFromOpenChrono -= chrono.ElapsedMilliseconds;
+            openList.RemoveAt(openList.Count - 1);
+            removeFromOpenChrono += chrono.ElapsedMilliseconds;
+
+            // If the last tile was already reach, skip the whole process on the current path
+            Tile tileToExtend = pathToExtend.LastStep;
+            if (closeHashSet.Contains(tileToExtend))
+                continue;
+
+            // Add the last tile to the close list (HashSet)
+            closeHashSet.Add(tileToExtend);
 
             foreachNeighborsChrono -= chrono.ElapsedMilliseconds;
             // loop through all neighbors from step to extend
-            for (int i = 0; i < stepToExtend.Neighbors.Count; i++)
+            for (int i = 0; i < tileToExtend.Neighbors.Count; i++)
             {
-                GameTile neighbor = stepToExtend.Neighbors[i];
+                Tile neighbor = tileToExtend.Neighbors[i];
 
-                // if inaccessible neighbor, skip iteration
+                // if neighbor is inaccessible (wall) , skip iteration
                 if (!neighbor.IsAccessible)
                     continue;
 
-                int weightExtended = weightToExtend + neighbor.Weight;
+                // search in the close list if the neighbor was already reached
+                searchInCloseListChrono -= chrono.ElapsedMilliseconds;
+                bool shortestExists = closeHashSet.Contains(neighbor);
+                searchInCloseListChrono += chrono.ElapsedMilliseconds;
 
-                // predicate to find a shortest or same length path to reach the same tile
-                System.Predicate<Path> predShortest = (Path p) =>
+                if (shortestExists)
+                    continue;
+
+                // Clone the current path to extend
+                clonePathChrono -= chrono.ElapsedMilliseconds;
+                Path extendedPath = new Path(pathToExtend);
+                clonePathChrono += chrono.ElapsedMilliseconds;
+
+                // Extend path with the current valid neighbor
+                extendPathChrono -= chrono.ElapsedMilliseconds;
+                extendedPath.AddStep(neighbor);
+                extendPathChrono += chrono.ElapsedMilliseconds;
+
+                // Search in open list where to insert the extended path
+                searchInsertionChrono -= chrono.ElapsedMilliseconds;
+                int indexInsertion = openList.BinarySearch(extendedPath, pComparer);
+                if (indexInsertion < 0)
                 {
-                    return p.LastStep == neighbor && p.Weight <= weightExtended;
-                };
-
-                bool shortestExists = false;
-                /**
-                // search in open list if a shortest path already reached the same tile
-                searchInOpenList -= chrono.ElapsedMilliseconds;
-                bool shortestExists = openList.Exists(predShortest);
-                searchInOpenList += chrono.ElapsedMilliseconds;
-
-                if (!shortestExists)
-                {
-                    // if no path found in open list, search also in the close list
-                    searchInCloseList -= chrono.ElapsedMilliseconds;
-                    //shortestExists = closeList.Exists(predShortest);
-                    shortestExists = closePaths.TryGetValue(neighbor, out shortest);
-                    shortestExists = shortestExists && shortest <= weightExtended;
-                    searchInCloseList += chrono.ElapsedMilliseconds;
+                    indexInsertion = ~indexInsertion;
                 }
-                /**/
+                searchInsertionChrono += chrono.ElapsedMilliseconds;
 
-                // if no path found in any list, search index of first path longer than extended path
-                if (!shortestExists)
-                {
-                    System.Predicate<Path> predInsertion = (Path p) =>
-                    {
-                        return p.Weight > weightExtended;
-                    };
-
-                    extendPathChrono -= chrono.ElapsedMilliseconds;
-                    clonePathChrono -= chrono.ElapsedMilliseconds;
-                    Path pathExtended = new Path(pathToExtend);
-                    clonePathChrono += chrono.ElapsedMilliseconds;
-
-                    pathExtended.AddStep(neighbor);
-                    extendPathChrono += chrono.ElapsedMilliseconds;
-
-                    searchInsertionChrono -= chrono.ElapsedMilliseconds;
-                    int indexInsertion = openList.FindIndex(predInsertion);
-                    searchInsertionChrono += chrono.ElapsedMilliseconds;
-
-                    // if no longer path found, add the extended path at end
-                    if (indexInsertion == -1)
-                    {
-                        openList.Add(pathExtended);
-                    }
-                    else // otherwise, insert path at right index
-                    {
-                        openList.Insert(indexInsertion, pathExtended);
-                    }
-                }
-
+                // Insert the extended path in open list
+                insertToOpenListChrono -= chrono.ElapsedMilliseconds;
+                openList.Insert(indexInsertion, extendedPath);
+                insertToOpenListChrono += chrono.ElapsedMilliseconds;
             }
             foreachNeighborsChrono += chrono.ElapsedMilliseconds;
-
-            //closeList.Add(pathToExtend);
-            closePaths.Add(stepToExtend, pathToExtend.Weight);
-
-            openList.RemoveAt(0);
         }
-        _infos = StopChrono(_Start, _End);
+        _ChronoInfos = StopChrono(_Start, _End);
         return null;
     }
 
     /// <summary>
-    /// Search a path with AStar algorithm
+    /// Search a path with Dijkstra algorithm.
+    /// The open list is optimized with PathLink class and not Path class. This way, we do not duplicate a whole path when we extend it,
+    /// we create PathLink insted and use it as LinkedList to simulate a path.
     /// </summary>
     /// <param name="_Start">Tile to start from</param>
     /// <param name="_End">Tile to reach</param>
+    /// <param name="_ChronoInfos">Struct with times value to evaluate performance</param>
+    /// <param name="_MaxSeconds">Max time allowed to search a solution. If value is negative, no time limit applied</param>
     /// <returns>the shortest path from start tile to end tile if it exists, null otherwise</returns>
-    public static Path AstarWiki(GameTile _Start, GameTile _End, out ChronoInfos _infos)
+    public static Path SearchDisjktraPathFromTo_LinkOpti(Tile _Start, Tile _End, out ChronoInfos _ChronoInfos, float _TimeLimit)
     {
-        if (!_Start || !_End)
+        StartChrono();
+
+        if (_Start == null || !_Start.IsAccessible || _End == null || !_End.IsAccessible)
         {
-            _infos = ChronoInfos.InfosNone;
+            _ChronoInfos = ChronoInfos.InfosNone;
             return null;
         }
 
-        chrono.Restart();
-        HashSet<GameTile> closeHashSet = new HashSet<GameTile>();
-        PathHeuristic firstPath = new PathHeuristic(_Start, 0);
-        List<PathHeuristic> openList = new List<PathHeuristic>() { firstPath };
+        List<PathLink> openList = new List<PathLink>(100) { new PathLink(_Start) };
+        HashSet<Tile> closeHashSet = new HashSet<Tile>();
+        CustomComparer<PathLink> customComparer = new CustomComparer<PathLink>(false);
 
-        PathHeuristic pathToExtend = null;
-        GameTile stepToExtend = null;
-        GameTile neighbor = null;
-        int heuristic = 0;
-        PathHeuristic extendedPath = null;
-        int indexInsertion = 0;
-        PathHeuristicComparer phComparer = new PathHeuristicComparer(false);
-        while (openList.Count > 0)
+        while(openList.Count > 0)
         {
-            pathToExtend = openList.Last();
-            openList.RemoveAt(openList.Count - 1);
-            stepToExtend = pathToExtend.LastStep;
-            if (stepToExtend == _End)
+            // Stop search if the chrono reached the time limit.
+            // It avoids to get infinite loop or too long to find a solution. Mainly usefull to debug
+            if (_TimeLimit > 0 && chrono.Elapsed.TotalSeconds > _TimeLimit)
             {
-                _infos = StopChrono(_Start, _End);
-                return pathToExtend;
+                _ChronoInfos = StopChrono(_Start, _End);
+                return null;
             }
+
+            // Take the last (and so the shortest) path to extend
+            PathLink pathToExtend = openList.Last();
+            Tile tileToExtend = pathToExtend.Tile;
+
+            // If the end is reach, return solution
+            if (tileToExtend == _End)
+            {
+                _ChronoInfos = StopChrono(_Start, _End);
+                return Path.CreatePath(pathToExtend);
+            }
+
+            // Remove the current path from open list
+            removeFromOpenChrono -= chrono.ElapsedMilliseconds;
+            openList.RemoveAt(openList.Count - 1);
+            removeFromOpenChrono += chrono.ElapsedMilliseconds;
+
+            // If the last tile was already reached, skip process to next path to extend
+            if (closeHashSet.Contains(tileToExtend))
+                continue;
+            closeHashSet.Add(tileToExtend);
 
             foreachNeighborsChrono -= chrono.ElapsedMilliseconds;
-            for (int i = 0; i < stepToExtend.Neighbors.Count; i++)
+            // Loop on  neighbors of last tile
+            for (int i = 0; i < tileToExtend.Neighbors.Count; i++)
             {
-                neighbor = stepToExtend.Neighbors[i];
-                if (neighbor.IsAccessible)
+                Tile neighbor = tileToExtend.Neighbors[i];
+                // If neighbor is wall or already reached, skip process to next neighbor
+
+                searchInCloseListChrono -= chrono.ElapsedMilliseconds;
+                bool existInCloseList = closeHashSet.Contains(neighbor);
+                searchInCloseListChrono += chrono.ElapsedMilliseconds;
+
+                if (!neighbor.IsAccessible || existInCloseList)
+                    continue;
+
+
+                // Extend pathlink with the path to extend and the current neighbor
+                extendPathChrono -= chrono.ElapsedMilliseconds;
+                PathLink extendedPath = new PathLink(pathToExtend, neighbor);
+                extendPathChrono += chrono.ElapsedMilliseconds;
+
+                // Search index to insert extended path in open list
+                searchInsertionChrono -= chrono.ElapsedMilliseconds;
+                int indexInsertion = openList.BinarySearch(extendedPath, customComparer);
+                if (indexInsertion < 0)
                 {
-                    heuristic = GetManhattanDistance(neighbor, _End);
-
-                    searchInCloseListChrono -= chrono.ElapsedMilliseconds;
-                    bool canExtend = !closeHashSet.Contains(neighbor);
-                    searchInCloseListChrono += chrono.ElapsedMilliseconds;
-
-                    searchInOpenListChrono -= chrono.ElapsedMilliseconds;
-                    canExtend = canExtend && !openList.Exists(p => p.LastStep == neighbor && p.WeightWithHeuristic <= pathToExtend.Weight + neighbor.Weight + heuristic);
-                    searchInOpenListChrono += chrono.ElapsedMilliseconds;
-
-                    //if (!(closeHashSet.Contains(neighbor) || openList.Exists(p => p.LastStep == neighbor && p.WeightWithHeuristic <= pathToExtend.Weight + neighbor.Weight + heuristic)))
-                    if (canExtend)
-                    {
-                        clonePathChrono -= chrono.ElapsedMilliseconds;
-                        extendedPath = new PathHeuristic(pathToExtend);
-                        clonePathChrono += chrono.ElapsedMilliseconds;
-
-                        extendPathChrono -= chrono.ElapsedMilliseconds;
-                        extendedPath.AddStep(neighbor, heuristic);
-                        extendPathChrono += chrono.ElapsedMilliseconds;
-
-                        searchInsertionChrono -= chrono.ElapsedMilliseconds;
-                        indexInsertion = openList.BinarySearch(extendedPath, phComparer);
-                        if (indexInsertion < 0)
-                        {
-                            indexInsertion = ~indexInsertion;
-                        }
-                        searchInsertionChrono += chrono.ElapsedMilliseconds;
-
-                        insertToOpenListChrono -= chrono.ElapsedMilliseconds;
-                        openList.Insert(indexInsertion, extendedPath);
-                        insertToOpenListChrono += chrono.ElapsedMilliseconds;
-                    }
+                    indexInsertion = ~indexInsertion;
                 }
+                searchInsertionChrono += chrono.ElapsedMilliseconds;
+
+                // Insert the extended path in open list
+                insertToOpenListChrono -= chrono.ElapsedMilliseconds;
+                openList.Insert(indexInsertion, extendedPath);
+                insertToOpenListChrono += chrono.ElapsedMilliseconds;
             }
             foreachNeighborsChrono += chrono.ElapsedMilliseconds;
-
-            closeHashSet.Add(stepToExtend);
         }
 
-        _infos = StopChrono(_Start, _End);
+        _ChronoInfos = StopChrono(_Start, _End);
         return null;
     }
 
-    public static Path AStarCustomBasic(GameTile _Start, GameTile _End, out ChronoInfos _infos)
+    /// <summary>
+    /// Search a path with custom AStar algorithm
+    /// (Path class is used to explore the grid)
+    /// </summary>
+    /// <param name="_Start">Tile to start from</param>
+    /// <param name="_End">Tile to reach</param>
+    /// <param name="_ChronoInfos">Struct with times value to evaluate performance</param>
+    /// <param name="_MaxSeconds">Max time allowed to search a solution. If value is negative, no time limit applied</param>
+    /// <returns>the shortest path from start tile to end tile if it exists, null otherwise</returns>
+    public static Path AStarCustomBasic(Tile _Start, Tile _End, out ChronoInfos _ChronoInfos, float _MaxSeconds)
     {
-        removeFromOpenChrono = 0f;
-        foreachNeighborsChrono = 0f;
-        clonePathChrono = 0f;
-        extendPathChrono = 0f;
-        searchInOpenListChrono = 0f;
-        searchInCloseListChrono = 0f;
-        searchInsertionChrono = 0f;
-        insertToOpenListChrono = 0f;
+        StartChrono();
 
-        chrono.Restart();
-        if (!_Start || !_End)
+        if (_Start == null || !_Start.IsAccessible || _End == null || !_End.IsAccessible)
         {
-            _infos = ChronoInfos.InfosNone;
+            _ChronoInfos = ChronoInfos.InfosNone;
             return null;
         }
 
         List<PathHeuristic> openList = new List<PathHeuristic>(50) { new PathHeuristic(_Start, GetManhattanDistance(_Start, _End)) };
-        //List<PathHeuristic> closeList = new List<PathHeuristic>(50);
-        HashSet<GameTile> closeHashSet = new HashSet<GameTile>();
+        HashSet<Tile> closeHashSet = new HashSet<Tile>();
+        CustomComparer<PathHeuristic> phComparer = new CustomComparer<PathHeuristic>(false);
 
-        PathHeuristic pathToExtend = null;
-        GameTile stepToExtend = null;
-        GameTile neighbor = null;
-        int weightExtended = 0;
-        int heuristic;
-        bool shortestExist = false;
-        System.Predicate<PathHeuristic> shortestPredicate = (PathHeuristic path) =>
+        while (openList.Count > 0)
         {
-            return path.LastStep == neighbor && path.WeightWithHeuristic <= weightExtended;
-        };
-        PathHeuristic extendedPath = null;
-        int indexInsertion = -1;
-        PathHeuristicComparer phComparer = new PathHeuristicComparer(true);
+            if (_MaxSeconds > 0 && chrono.Elapsed.TotalSeconds > _MaxSeconds)
+            {
+                _ChronoInfos = StopChrono(_Start, _End);
+                return null;
+            }
 
-        while(openList.Count > 0)
-        {
-            pathToExtend = openList.First(); // keep open list sorted by ascending
+            PathHeuristic pathToExtend = openList.Last();
 
             removeFromOpenChrono -= chrono.ElapsedMilliseconds;
-            openList.RemoveAt(0);
+            openList.RemoveAt(openList.Count - 1);
             removeFromOpenChrono += chrono.ElapsedMilliseconds;
 
-            stepToExtend = pathToExtend.LastStep;
-            if (stepToExtend == _End)
+            Tile tileToExtend = pathToExtend.LastStep;
+            if (tileToExtend == _End)
             {
-                _infos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End);
                 return pathToExtend;
             }
 
-            //closeList.Add(pathToExtend);
-            closeHashSet.Add(stepToExtend);
+            if (closeHashSet.Contains(tileToExtend))
+                continue;
+
+            closeHashSet.Add(tileToExtend);
 
             foreachNeighborsChrono -= chrono.ElapsedMilliseconds;
-            for(int i = 0; i < stepToExtend.Neighbors.Count; i++)
+            for (int i = 0; i < tileToExtend.Neighbors.Count; i++)
             {
-                neighbor = stepToExtend.Neighbors[i];
+                Tile neighbor = tileToExtend.Neighbors[i];
                 if (!neighbor.IsAccessible)
                     continue;
 
-                heuristic = GetManhattanDistance(neighbor, _End);
-                weightExtended = pathToExtend.Weight + neighbor.Weight + heuristic;
-
                 searchInCloseListChrono -= chrono.ElapsedMilliseconds;
-                //shortestExist = closeList.Exists(shortestPredicate);
-                shortestExist = closeHashSet.Contains(neighbor);
+                if (closeHashSet.Contains(neighbor))
+                    continue;
                 searchInCloseListChrono += chrono.ElapsedMilliseconds;
 
-                searchInOpenListChrono -= chrono.ElapsedMilliseconds;
-                shortestExist = shortestExist || openList.Exists(shortestPredicate);
-                searchInOpenListChrono += chrono.ElapsedMilliseconds;
-
-                if (shortestExist)
-                    continue;
-
                 clonePathChrono -= chrono.ElapsedMilliseconds;
-                extendedPath = new PathHeuristic(pathToExtend);
+                PathHeuristic extendedPath = new PathHeuristic(pathToExtend);
                 clonePathChrono += chrono.ElapsedMilliseconds;
 
                 extendPathChrono -= chrono.ElapsedMilliseconds;
-                extendedPath.AddStep(neighbor, heuristic);
+                extendedPath.AddStep(neighbor, GetManhattanDistance(neighbor, _End));
                 extendPathChrono += chrono.ElapsedMilliseconds;
 
                 searchInsertionChrono -= chrono.ElapsedMilliseconds;
-                indexInsertion = openList.BinarySearch(extendedPath, phComparer);
+                int indexInsertion = openList.BinarySearch(extendedPath, phComparer);
                 if (indexInsertion < 0)
                 {
                     indexInsertion = ~indexInsertion;
@@ -325,35 +302,146 @@ public static class Pathfinder
             foreachNeighborsChrono += chrono.ElapsedMilliseconds;
         }
 
-        _infos = StopChrono(_Start, _End);
+        _ChronoInfos = StopChrono(_Start, _End);
         return null;
     }
 
-    public static Path SearchHPAFromTo(GameTile _Start, GameTile _End, out ChronoInfos _infos)
+    /// <summary>
+    /// Search a path with custom AStar algorithm
+    /// (PathLink is use to explore the grid. this way, there's no duplicate of tile array when we extend open list)
+    /// </summary>
+    /// <param name="_Start">Tile to start from</param>
+    /// <param name="_End">Tile to reach</param>
+    /// <param name="_ChronoInfos">Struct with times value to evaluate performance</param>
+    /// <param name="_MaxSeconds">Max time allowed to search a solution. If value is negative, no time limit applied</param>
+    /// <returns>the shortest path from start tile to end tile if it exists, null otherwise</returns>
+    public static Path AStar_LinkOpti(Tile _Start, Tile _End, out ChronoInfos _ChronoInfos, float _MaxSeconds)
+    {
+        StartChrono();
+
+        if (_Start == null || !_Start.IsAccessible || _End == null || !_End.IsAccessible)
+        {
+            _ChronoInfos = ChronoInfos.InfosNone;
+            return null;
+        }
+
+        List<PathLinkHeuristic> openList = new List<PathLinkHeuristic>(100) { new PathLinkHeuristic(_Start, GetManhattanDistance(_Start, _End)) };
+        HashSet<Tile> closeHashSet = new HashSet<Tile>();
+        CustomComparer<PathLinkHeuristic> customComparer = new CustomComparer<PathLinkHeuristic>(true);
+
+        while(openList.Count > 0)
+        {
+            if (_MaxSeconds > 0 && chrono.Elapsed.TotalSeconds > _MaxSeconds)
+            {
+                _ChronoInfos = StopChrono(_Start, _End);
+                return null;
+            }
+
+            PathLinkHeuristic linkToExtend = openList.First();
+            if (linkToExtend.Tile == _End)
+            {
+                _ChronoInfos = StopChrono(_Start, _End);
+                return Path.CreatePath(linkToExtend);
+            }
+
+            removeFromOpenChrono -= chrono.ElapsedMilliseconds;
+            openList.RemoveAt(0);
+            removeFromOpenChrono += chrono.ElapsedMilliseconds;
+
+            if (closeHashSet.Contains(linkToExtend.Tile))
+                continue;
+
+            closeHashSet.Add(linkToExtend.Tile);
+            Tile tileToExtend = linkToExtend.Tile;
+
+            foreachNeighborsChrono -= chrono.ElapsedMilliseconds;
+            for (int i = 0; i < tileToExtend.Neighbors.Count; i++)
+            {
+                Tile neighbor = tileToExtend.Neighbors[i];
+
+                searchInCloseListChrono -= chrono.ElapsedMilliseconds;
+                bool existInCloseList = closeHashSet.Contains(neighbor);
+                searchInCloseListChrono += chrono.ElapsedMilliseconds;
+
+                if (!neighbor.IsAccessible || existInCloseList)
+                    continue;
+
+                extendPathChrono -= chrono.ElapsedMilliseconds;
+                PathLinkHeuristic extendedLink = new PathLinkHeuristic(linkToExtend, neighbor, GetManhattanDistance(neighbor, _End));
+                extendPathChrono += chrono.ElapsedMilliseconds;
+
+                searchInsertionChrono -= chrono.ElapsedMilliseconds;
+                int indexInsertion = openList.BinarySearch(extendedLink, customComparer);
+                if (indexInsertion < 0)
+                {
+                    indexInsertion = ~indexInsertion;
+                }
+                searchInsertionChrono += chrono.ElapsedMilliseconds;
+
+                insertToOpenListChrono -= chrono.ElapsedMilliseconds;
+                openList.Insert(indexInsertion, extendedLink);
+                insertToOpenListChrono += chrono.ElapsedMilliseconds;
+            }
+            foreachNeighborsChrono += chrono.ElapsedMilliseconds;
+        }
+
+        _ChronoInfos = StopChrono(_Start, _End);
+        return null;
+    }
+
+    /// <summary>
+    /// Search a path with HPA algorithm
+    /// </summary>
+    /// <param name="_Start">Tile to start from</param>
+    /// <param name="_End">Tile to reach</param>
+    /// <param name="_ChronoInfos">Struct with times value to evaluate performance</param>
+    /// <param name="_MaxSeconds">Max time allowed to search a solution. If value is negative, no time limit applied</param>
+    /// <returns>the shortest path from start tile to end tile if it exists, null otherwise</returns>
+    public static Path SearchHPAFromTo(Tile _Start, Tile _End, out ChronoInfos _ChronoInfos, float _MaxSeconds)
     {
         throw new System.NotImplementedException();
+
+        StartChrono();
+
+        if (_Start == null || !_Start.IsAccessible || _End == null || !_End.IsAccessible)
+        {
+            _ChronoInfos = ChronoInfos.InfosNone;
+            return null;
+        }
     }
     #endregion
 
     #region Private Methods
-    private static int GetManhattanDistance(GameTile _TileA, GameTile _TileB)
+    private static int GetManhattanDistance(Tile _TileA, Tile _TileB)
     {
-        if (!_TileA || !_TileB)
+        if (_TileA == null || _TileB == null)
             return -1;
-        return Mathf.Abs(_TileA.GridPosition.x - _TileB.GridPosition.x) + Mathf.Abs(_TileA.GridPosition.y - _TileB.GridPosition.y);
+        return Mathf.Abs(_TileA.Row - _TileB.Row) + Mathf.Abs(_TileA.Column - _TileB.Column);
     }
 
-    private static ChronoInfos StopChrono(GameTile _Start, GameTile _End)
+    private static void StartChrono()
+    {
+        removeFromOpenChrono = 0f;
+        foreachNeighborsChrono = 0f;
+        searchInCloseListChrono = 0f;
+        searchInOpenListChrono = 0f;
+        clonePathChrono = 0f;
+        extendPathChrono = 0f;
+        searchInsertionChrono = 0f;
+        chrono.Restart();
+    }
+
+    private static ChronoInfos StopChrono(Tile _Start, Tile _End)
     {
         chrono.Stop();
-        string log = $"from [{_Start.GridPosition.y}, {_Start.GridPosition.x}] to [{_End.GridPosition.y}, {_End.GridPosition.x}]\n";
+        string log = $"from [{_Start.Row}, {_Start.Column}] to [{_End.Row}, {_End.Column}]\n";
         log += $"elasped time : {chrono.ElapsedMilliseconds} ms\n";
         log += $"visit all neighbors : {foreachNeighborsChrono} ms\n";
         log += $"clone path to extend : {clonePathChrono} ms\n";
         log += $"extend path : {extendPathChrono} ms\n";
         log += $"search in open list : {searchInOpenListChrono} ms\n";
         log += $"search in close list : {searchInCloseListChrono} ms\n";
-        log += $"search index in open list to insert : {searchInsertionChrono} ms\n";
+        log += $"search in open list to insert : {searchInsertionChrono} ms\n";
         log += $"insert to open list : {insertToOpenListChrono} ms\n";
         Debug.Log(log);
 
@@ -375,7 +463,9 @@ public static class Pathfinder
     {
         PM_None,
         PM_Dijkstra,
+        PM_Dijkstra_LinkOpti,
         PM_AStar,
+        PM_AStar_LinkOpti,
         PM_HPA
     }
     #endregion

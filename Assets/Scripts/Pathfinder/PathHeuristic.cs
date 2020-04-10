@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class PathHeuristic : Path
+public class PathHeuristic : Path, IComparable<PathHeuristic>
 {
 	#region Public Methods
-	public PathHeuristic(GameTile _Tile, int _Heuristic) : base(_Tile)
+	public PathHeuristic(Tile _Tile, int _Heuristic) : base(_Tile)
 	{
 		m_Heuristic = _Heuristic;
 	}
@@ -16,28 +16,20 @@ public class PathHeuristic : Path
 		m_Heuristic = _ToCopy.m_Heuristic;
 	}
 
-	public void AddStep(GameTile _Tile, int _Heuristic)
+	public void AddStep(Tile _Tile, int _Heuristic)
 	{
 		base.AddStep(_Tile);
 		m_Heuristic = _Heuristic;
 	}
 
-	public override int CompareTo(object obj)
-	{
-		PathHeuristic otherPath = obj as PathHeuristic;
-		if (otherPath == null)
-			return 1;
 
-		return WeightWithHeuristic.CompareTo(otherPath.WeightWithHeuristic);
-	}
-
-	public List<PathHeuristic> GetExtendedPath(System.Func<GameTile, GameTile, int> _HeuristicFunction, GameTile _End)
+	public List<PathHeuristic> GetExtendedPaths(System.Func<Tile, Tile, int> _HeuristicFunction, Tile _End)
 	{
 		List<PathHeuristic> allExtendedpaths = new List<PathHeuristic>(10); // assume 4 as initial capacity
 		for (int i = 0; i < LastStep.Neighbors.Count; i++)
 		{
-			GameTile beforeLast = Steps.Count > 1 ? Steps[Steps.Count - 2] : null;
-			GameTile neighbor = LastStep.Neighbors[i];
+			Tile beforeLast = Steps.Count > 1 ? Steps[Steps.Count - 2] : null;
+			Tile neighbor = LastStep.Neighbors[i];
 			if (!neighbor.IsAccessible || beforeLast == neighbor)
 				continue;
 			PathHeuristic extendedPath = new PathHeuristic(this);
@@ -45,6 +37,11 @@ public class PathHeuristic : Path
 			allExtendedpaths.Add(extendedPath);
 		}
 		return allExtendedpaths;
+	}
+
+	public int CompareTo(PathHeuristic _Other)
+	{
+		return WeightWithHeuristic.CompareTo(_Other.WeightWithHeuristic);
 	}
 	#endregion
 
