@@ -7,7 +7,7 @@ public class PathLink : System.IComparable<PathLink>
     {
         m_PreviousLink = null;
         m_Tile = _CurrentTile;
-        m_Weight = m_Tile.Weight;
+        m_Weight = 0;
     }
 
     public PathLink(PathLink _Previous, Tile _CurrentTile)

@@ -19,6 +19,7 @@ public struct ChronoInfos
 			infos.SearchInCloseListChrono = 0f;
 			infos.SearchInsertionChrono = 0f;
 			infos.InsertToOpenListChrono = 0f;
+			infos.CreateSolutionChrono = 0f;
 			return infos;
 		}
 	}
@@ -33,5 +34,6 @@ public struct ChronoInfos
 	public float SearchInCloseListChrono;
 	public float SearchInsertionChrono;
 	public float InsertToOpenListChrono;
+	public float CreateSolutionChrono;
 	#endregion
 }

@@ -13,6 +13,7 @@ public static class Pathfinder
     private static float searchInCloseListChrono = 0f;
     private static float searchInsertionChrono = 0f;
     private static float insertToOpenListChrono = 0f;
+    private static float createSolutionChrono = 0f;
     private static System.Diagnostics.Stopwatch chrono = new System.Diagnostics.Stopwatch();
 
     #region Public Methods
@@ -146,7 +147,7 @@ public static class Pathfinder
         HashSet<Tile> closeHashSet = new HashSet<Tile>();
         CustomComparer<PathLink> customComparer = new CustomComparer<PathLink>(false);
 
-        while(openList.Count > 0)
+        while (openList.Count > 0)
         {
             // Stop search if the chrono reached the time limit.
             // It avoids to get infinite loop or too long to find a solution. Mainly usefull to debug
@@ -237,7 +238,7 @@ public static class Pathfinder
             return null;
         }
 
-        List<PathHeuristic> openList = new List<PathHeuristic>(50) { new PathHeuristic(_Start, GetManhattanDistance(_Start, _End)) };
+        List<PathHeuristic> openList = new List<PathHeuristic>(50) { new PathHeuristic(_Start, Tile.GetManhattanDistance(_Start, _End)) };
         HashSet<Tile> closeHashSet = new HashSet<Tile>();
         CustomComparer<PathHeuristic> phComparer = new CustomComparer<PathHeuristic>(false);
 
@@ -284,7 +285,7 @@ public static class Pathfinder
                 clonePathChrono += chrono.ElapsedMilliseconds;
 
                 extendPathChrono -= chrono.ElapsedMilliseconds;
-                extendedPath.AddStep(neighbor, GetManhattanDistance(neighbor, _End));
+                extendedPath.AddStep(neighbor, Tile.GetManhattanDistance(neighbor, _End));
                 extendPathChrono += chrono.ElapsedMilliseconds;
 
                 searchInsertionChrono -= chrono.ElapsedMilliseconds;
@@ -325,11 +326,11 @@ public static class Pathfinder
             return null;
         }
 
-        List<PathLinkHeuristic> openList = new List<PathLinkHeuristic>(100) { new PathLinkHeuristic(_Start, GetManhattanDistance(_Start, _End)) };
+        List<PathLinkHeuristic> openList = new List<PathLinkHeuristic>(100) { new PathLinkHeuristic(_Start, Tile.GetManhattanDistance(_Start, _End)) };
         HashSet<Tile> closeHashSet = new HashSet<Tile>();
         CustomComparer<PathLinkHeuristic> customComparer = new CustomComparer<PathLinkHeuristic>(true);
 
-        while(openList.Count > 0)
+        while (openList.Count > 0)
         {
             if (_MaxSeconds > 0 && chrono.Elapsed.TotalSeconds > _MaxSeconds)
             {
@@ -341,7 +342,10 @@ public static class Pathfinder
             if (linkToExtend.Tile == _End)
             {
                 _ChronoInfos = StopChrono(_Start, _End);
-                return Path.CreatePath(linkToExtend);
+                createSolutionChrono -= chrono.ElapsedMilliseconds;
+                Path solution = Path.CreatePath(linkToExtend);
+                createSolutionChrono += chrono.ElapsedMilliseconds;
+                return solution;
             }
 
             removeFromOpenChrono -= chrono.ElapsedMilliseconds;
@@ -367,7 +371,7 @@ public static class Pathfinder
                     continue;
 
                 extendPathChrono -= chrono.ElapsedMilliseconds;
-                PathLinkHeuristic extendedLink = new PathLinkHeuristic(linkToExtend, neighbor, GetManhattanDistance(neighbor, _End));
+                PathLinkHeuristic extendedLink = new PathLinkHeuristic(linkToExtend, neighbor, Tile.GetManhattanDistance(neighbor, _End));
                 extendPathChrono += chrono.ElapsedMilliseconds;
 
                 searchInsertionChrono -= chrono.ElapsedMilliseconds;
@@ -397,10 +401,8 @@ public static class Pathfinder
     /// <param name="_ChronoInfos">Struct with times value to evaluate performance</param>
     /// <param name="_MaxSeconds">Max time allowed to search a solution. If value is negative, no time limit applied</param>
     /// <returns>the shortest path from start tile to end tile if it exists, null otherwise</returns>
-    public static Path SearchHPAFromTo(Tile _Start, Tile _End, out ChronoInfos _ChronoInfos, float _MaxSeconds)
+    public static Path SearchHPAFromTo(GridClustered _GridClustered, Tile _Start, Tile _End, out ChronoInfos _ChronoInfos, float _MaxSeconds)
     {
-        throw new System.NotImplementedException();
-
         StartChrono();
 
         if (_Start == null || !_Start.IsAccessible || _End == null || !_End.IsAccessible)
@@ -408,17 +410,151 @@ public static class Pathfinder
             _ChronoInfos = ChronoInfos.InfosNone;
             return null;
         }
+
+        Cluster startCluster = _GridClustered.GetClusterOfTile(_Start);
+        Cluster endCluster = _GridClustered.GetClusterOfTile(_End);
+        Path instantSolution = null;
+        if (startCluster == endCluster && (instantSolution = startCluster.ComputeInternalPathFromTo(_Start, _End)) != null)
+        {
+            _ChronoInfos = StopChrono(_Start, _End);
+            return instantSolution;
+        }
+
+        List<BridgeStep> openList = new List<BridgeStep>();
+        CustomComparer<BridgeStep> comparer = new CustomComparer<BridgeStep>(false);
+
+        HashSet<Bridge> closeSet = new HashSet<Bridge>();
+
+        // store all the possible bridges connected to the start tile with their path
+        // populate the open list with these bridges as all possible first steps
+        Dictionary<Tile, Path> allFirstParts = new Dictionary<Tile, Path>();
+        for (int i = 0; i < startCluster.Bridges.Count; i++)
+        {
+            Path path = startCluster.ComputeInternalPathFromTo(_Start, startCluster.Bridges[i].Start);
+            if (path != null)
+            {
+                allFirstParts.Add(startCluster.Bridges[i].Start, path);
+
+                BridgeStep stepToAdd = new BridgeStep(startCluster.Bridges[i], path.Weight);
+                int indexInsertion = openList.BinarySearch(stepToAdd, comparer);
+                if (indexInsertion < 0)
+                {
+                    indexInsertion = ~indexInsertion;
+                }
+                openList.Insert(indexInsertion, stepToAdd);
+            }
+        }
+
+        // store all the possible bridges connected to the end tile with their path
+        Dictionary<Tile, Path> allLastParts = new Dictionary<Tile, Path>();
+        for (int i = 0; i < endCluster.Bridges.Count; i++)
+        {
+            Path path = endCluster.ComputeInternalPathFromTo(endCluster.Bridges[i].Start, _End);
+            if (path != null)
+            {
+                allLastParts.Add(endCluster.Bridges[i].Start, path);
+            }
+        }
+
+        while (openList.Count > 0)
+        {
+            if (_MaxSeconds > 0 && chrono.Elapsed.TotalSeconds > _MaxSeconds)
+            {
+                _ChronoInfos = StopChrono(_Start, _End);
+                return null;
+            }
+
+            BridgeStep stepToExtend = openList.Last();
+
+            removeFromOpenChrono -= chrono.ElapsedMilliseconds;
+            openList.RemoveAt(openList.Count - 1);
+            removeFromOpenChrono += chrono.ElapsedMilliseconds;
+
+            // if the step is already marked as solution, then it's the shortest solution
+            if (stepToExtend.ReachedGoal)
+            {
+                // recreate whole path
+                createSolutionChrono -= chrono.ElapsedMilliseconds;
+                Path solution = stepToExtend.CreateCompletePath(_GridClustered, allFirstParts, allLastParts);
+                createSolutionChrono += chrono.ElapsedMilliseconds;
+
+                _ChronoInfos = StopChrono(_Start, _End);
+                return solution;
+            }
+
+            Bridge bridgeToExtend = stepToExtend.Bridge;
+            if (closeSet.Contains(bridgeToExtend))
+                continue;
+
+            closeSet.Add(bridgeToExtend);
+
+            // when reach a bridge with an end connected to the goal (check in the dictionary allLastParts) for the first time, mark it as one possible solution
+            // with the mark, add also the weight of the last part which connect the end bridge and the goal
+            // then, re-insert it in the open list at the right index.
+            // if we try to extend a bridge already marked, then it's the shortest solution
+
+            // if the bridge to extend is a bridge with the end connected to the goal cluster (in dictionary allLastParts)
+            if (endCluster.Bridges.Exists(bridge => bridge.Start == bridgeToExtend.End) && allLastParts.ContainsKey(bridgeToExtend.End))
+            {
+                // mark step as possible solution and add the weight of the right last part
+                stepToExtend.MarkAsSolution(allLastParts[stepToExtend.Bridge.End].Weight);
+
+                // find the right index to re-insert in open list
+                // if we try to extend it again, it means that it's the shortest path to the goal
+                int indexInsertion = openList.BinarySearch(stepToExtend, comparer);
+                if (indexInsertion < 0)
+                {
+                    indexInsertion = ~indexInsertion;
+                }
+                openList.Insert(indexInsertion, stepToExtend);
+            }
+            else
+            {
+                // Get the cluster from the bridgeToExtend End
+                Cluster cluster = _GridClustered.GetClusterOfTile(bridgeToExtend.End);
+
+                // Get the right reversed bridge
+                Bridge reverseBridge = cluster.Bridges.Find(b => b.Start == bridgeToExtend.End);
+
+                // loop through all the reversed bridge neighbors
+                foreachNeighborsChrono -= chrono.ElapsedMilliseconds;
+                foreach (Bridge neighbor in reverseBridge.Neighbors.Keys)
+                {
+                    // if the bridge is already in close set, skip to next neighbor
+                    searchInCloseListChrono -= chrono.ElapsedMilliseconds;
+                    bool existInCloseList = closeSet.Contains(neighbor);
+                    searchInCloseListChrono += chrono.ElapsedMilliseconds;
+                    if (existInCloseList)
+                        continue;
+
+                    // create extension with neighbor
+                    extendPathChrono -= chrono.ElapsedMilliseconds;
+                    BridgeStep extension = stepToExtend.MakeExtensionWith(neighbor, reverseBridge.Neighbors[neighbor].Weight);
+                    extendPathChrono += chrono.ElapsedMilliseconds;
+
+                    searchInsertionChrono -= chrono.ElapsedMilliseconds;
+                    int indexInsertion = openList.BinarySearch(extension, comparer);
+                    if (indexInsertion < 0)
+                    {
+                        indexInsertion = ~indexInsertion;
+                    }
+                    searchInsertionChrono += chrono.ElapsedMilliseconds;
+
+                    insertToOpenListChrono -= chrono.ElapsedMilliseconds;
+                    openList.Insert(indexInsertion, extension);
+                    insertToOpenListChrono += chrono.ElapsedMilliseconds;
+                }
+                foreachNeighborsChrono += chrono.ElapsedMilliseconds;
+            }
+        }
+
+        // No path found in limited time
+        _ChronoInfos = StopChrono(_Start, _End);
+        return null;
     }
     #endregion
 
     #region Private Methods
-    private static int GetManhattanDistance(Tile _TileA, Tile _TileB)
-    {
-        if (_TileA == null || _TileB == null)
-            return -1;
-        return Mathf.Abs(_TileA.Row - _TileB.Row) + Mathf.Abs(_TileA.Column - _TileB.Column);
-    }
-
     private static void StartChrono()
     {
         removeFromOpenChrono = 0f;
@@ -428,6 +564,8 @@ public static class Pathfinder
         clonePathChrono = 0f;
         extendPathChrono = 0f;
         searchInsertionChrono = 0f;
+        insertToOpenListChrono = 0f;
+        createSolutionChrono = 0f;
         chrono.Restart();
     }
 
@@ -443,6 +581,7 @@ public static class Pathfinder
         log += $"search in close list : {searchInCloseListChrono} ms\n";
         log += $"search in open list to insert : {searchInsertionChrono} ms\n";
         log += $"insert to open list : {insertToOpenListChrono} ms\n";
+        log += $"create solution : {createSolutionChrono} ms\n";
         Debug.Log(log);
 
         ChronoInfos infos = new ChronoInfos();
@@ -454,6 +593,7 @@ public static class Pathfinder
         infos.SearchInCloseListChrono = searchInCloseListChrono;
         infos.SearchInsertionChrono = searchInsertionChrono;
         infos.InsertToOpenListChrono = insertToOpenListChrono;
+        infos.CreateSolutionChrono = createSolutionChrono;
         return infos;
     }
     #endregion

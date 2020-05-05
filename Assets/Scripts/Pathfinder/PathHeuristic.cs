@@ -22,7 +22,6 @@ public class PathHeuristic : Path, IComparable<PathHeuristic>
 		m_Heuristic = _Heuristic;
 	}
 
-
 	public List<PathHeuristic> GetExtendedPaths(System.Func<Tile, Tile, int> _HeuristicFunction, Tile _End)
 	{
 		List<PathHeuristic> allExtendedpaths = new List<PathHeuristic>(10); // assume 4 as initial capacity

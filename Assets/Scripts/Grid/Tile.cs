@@ -1,8 +1,15 @@
 ﻿using System.Collections.Generic;
+using System;
 
 public class Tile
 {
 	#region Public Methods
+	public static int GetManhattanDistance(Tile _TileA, Tile _TileB)
+	{
+		if (_TileA == null || _TileB == null)
+			return -1;
+		return Math.Abs(_TileA.Row - _TileB.Row) + Math.Abs(_TileA.Column - _TileB.Column);
+	}
 	public Tile(int _Row, int _Column, int _Weight)
 	{
 		m_PosRow = _Row;

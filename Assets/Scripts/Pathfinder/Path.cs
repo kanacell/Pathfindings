@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
-using System;
 
 public class Path : System.IComparable<Path>
 {
@@ -36,31 +35,19 @@ public class Path : System.IComparable<Path>
 		m_Weight += _Tile.Weight;
 	}
 
-	public bool IsBeforeLast(Tile _Tile)
+	public void MergeBefore(Path _PathToMerge)
 	{
-		if (Steps.Count == 1)
-			return false;
-		return Steps[Steps.Count - 2] == _Tile;
+		List<Tile> tempSteps = _PathToMerge.m_Steps;
+		tempSteps.AddRange(m_Steps);
+		m_Steps = tempSteps;
+		m_Weight += _PathToMerge.m_Weight;
 	}
 
-	public List<Path> GetExtendedPaths()
+	public Path ReversedPath()
 	{
-		List<Path> allExtendedpaths = new List<Path>();
-		for (int i = 0; i < LastStep.Neighbors.Count; i++)
-		{
-			Tile neighbor = LastStep.Neighbors[i];
-			if (!neighbor.IsAccessible)
-				continue;
-
-			Tile beforeLast = Steps.Count > 1 ? Steps[Steps.Count - 2] : null;
-			if (neighbor == beforeLast)
-				continue;
-
-			Path extendedPath = new Path(this);
-			extendedPath.AddStep(neighbor);
-			allExtendedpaths.Add(extendedPath);
-		}
-		return allExtendedpaths;
+		Path reverse = new Path(this);
+		reverse.m_Steps.Reverse();
+		return reverse;
 	}
 
 	public virtual int CompareTo(Path _Other)

@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -11,12 +10,12 @@ public class PlayerController : MonoBehaviour
     {
         if (m_StartTile == null)
         {
-            m_StartTile = m_GridCreator.GetTileAt(m_RowStart, m_ColumnStart);
+            m_StartTile = m_GameGrid.GetTileAt(m_RowStart, m_ColumnStart);
         }
 
         if (m_EndTile == null)
         {
-            m_EndTile = m_GridCreator.GetTileAt(m_RowEnd, m_ColumnEnd);
+            m_EndTile = m_GameGrid.GetTileAt(m_RowEnd, m_ColumnEnd);
         }
 
         m_PathVisualizer.gameObject.SetActive(false);
@@ -39,7 +38,7 @@ public class PlayerController : MonoBehaviour
                 path = Pathfinder.AStar_LinkOpti(m_StartTile, m_EndTile, out infos, timeLimit);
                 break;
             case Pathfinder.PathfindingMode.PM_HPA:
-                path = null;
+                path = Pathfinder.SearchHPAFromTo(m_GridClustered, m_StartTile, m_EndTile, out infos, timeLimit);
                 break;
             default:
                 break;
@@ -56,6 +55,7 @@ public class PlayerController : MonoBehaviour
             m_ChronoText.text += $"search close : {infos.SearchInCloseListChrono} ms\n";
             m_ChronoText.text += $"search open to insert : {infos.SearchInsertionChrono} ms\n";
             m_ChronoText.text += $"insert open list : {infos.InsertToOpenListChrono} ms\n";
+            m_ChronoText.text += $"create solution : {infos.CreateSolutionChrono} ms\n";
         }
 
         if (path != null)
@@ -64,7 +64,7 @@ public class PlayerController : MonoBehaviour
                 return;
 
             m_PathVisualizer.gameObject.SetActive(true);
-            m_PathVisualizer.TracePath(path, m_GridCreator.Rows);
+            m_PathVisualizer.TracePath(path, m_GameGrid.TilesRows);
         }
     }
     #endregion
@@ -85,6 +85,39 @@ public class PlayerController : MonoBehaviour
 
         m_StartMark?.gameObject.SetActive(false);
         m_EndMark?.gameObject.SetActive(false);
+
+        if (m_PathfindingMode == Pathfinder.PathfindingMode.PM_HPA)
+        {
+            m_GameGrid = m_GridCreator.CreateGridClustered(m_SizeClusterRows, m_SizeClusterColumns);
+            m_GridClustered = m_GameGrid as GridClustered;
+            Debug.Log($"clusters : {m_GridClustered.Clusters.Length}");
+        }
+        else
+        {
+            m_GameGrid = m_GridCreator.CreateGrid();
+        }
+        Camera.main.transform.position = new Vector3(m_GameGrid.TilesColumns / 2f, 10, m_GameGrid.TilesRows / 2f);
+        Camera.main.orthographicSize = Mathf.Max(m_GameGrid.TilesRows, m_GameGrid.TilesColumns) / 2f + 1;
+    }
+
+    private void Update()
+    {
+        if (m_GridClustered != null)
+        {
+            switch (m_DisplayBridgeMode)
+            {
+                case DisplayBridgeMode.DB_One:
+                    DrawClustersLimits();
+                    DrawOneCluster(m_RowCluster, m_ColumnCluster);
+                    break;
+                case DisplayBridgeMode.DB_All:
+                    DrawClustersLimits();
+                    DrawAllClusters();
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 
     private void MarkAsStart(Vector3 _ScreenPos)
@@ -125,10 +158,9 @@ public class PlayerController : MonoBehaviour
 
     private Tile GetNearestTileTo(Vector3 _Point)
     {
-        int row = m_GridCreator.Rows -  Mathf.FloorToInt(_Point.z) - 1;
+        int row = m_GameGrid.TilesRows - Mathf.FloorToInt(_Point.z) - 1;
         int column = Mathf.FloorToInt(_Point.x);
-
-        return m_GridCreator.GetTileAt(row, column);
+        return m_GameGrid.GetTileAt(row, column);
     }
 
     private void PlaceMarkerAt(Transform _Marker, Tile _TileAbove)
@@ -136,8 +168,77 @@ public class PlayerController : MonoBehaviour
         _Marker.gameObject.SetActive(true);
 
         float x = _TileAbove.Column + 0.5f;
-        float z = m_GridCreator.Rows - _TileAbove.Row - 1 + 0.5f;
+        float z = m_GameGrid.TilesRows - _TileAbove.Row - 1 + 0.5f;
         _Marker.position = new Vector3(x, 0, z); ;
+    }
+
+    private void DrawClustersLimits()
+    {
+        for (int i = 0; i < m_GridClustered.NbClustersOnRows; i++)
+        {
+            Vector3 startLocation = Vector3.zero;
+            startLocation.x = 0;
+            startLocation.y = 0.5f;
+            startLocation.z = m_GridClustered.TilesRows - (i + 1) * m_SizeClusterRows;
+            Vector3 endLocation = Vector3.zero;
+            endLocation.x = m_GridClustered.TilesColumns;
+            endLocation.y = startLocation.y;
+            endLocation.z = startLocation.z;
+            Debug.DrawLine(startLocation, endLocation, Color.yellow);
+        }
+
+        for (int i = 0; i < m_GridClustered.NbClustersOnColumns; i++)
+        {
+            Vector3 startLocation = Vector3.zero;
+            startLocation.x = (i + 1) * m_SizeClusterColumns;
+            startLocation.y = 0.5f;
+            startLocation.z = m_GridClustered.TilesRows;
+            Vector3 endLocation = Vector3.zero;
+            endLocation.x = startLocation.x;
+            endLocation.y = startLocation.y;
+            endLocation.z = 0;
+            Debug.DrawLine(startLocation, endLocation, Color.red);
+        }
+    }
+
+    private void DrawOneCluster(int _RowCluster, int _ColumnCluster)
+    {
+        Cluster cluster = m_GridClustered.GetClusterAt(_RowCluster, _ColumnCluster);
+        if (cluster == null)
+            return;
+
+        string message = $"draw {cluster.Bridges.Count} bridges\n";
+        for (int i = 0; i < cluster.Bridges.Count; i++)
+        {
+            Bridge b = cluster.Bridges[i];
+            Vector3 startLocation = new Vector3(b.Start.Column + 0.5f, 1.0f, m_GridClustered.TilesRows - b.Start.Row - 0.5f);
+            Vector3 endLocation = new Vector3(b.End.Column + 0.5f, 1.0f, m_GridClustered.TilesRows - b.End.Row - 0.5f);
+            message += $"\tfrom [{b.Start.Row}; {b.Start.Column}] to [{b.End.Row};{b.End.Column}]\n";
+            Debug.DrawLine(startLocation, endLocation, Color.red);
+
+            foreach (var neighborKey in b.Neighbors.Keys)
+            {
+                Vector3 neighborLocation = Vector3.one;
+                neighborLocation.x = neighborKey.Start.Column + 0.5f;
+                neighborLocation.z = m_GridClustered.TilesRows - neighborKey.Start.Row - 0.5f;
+                Debug.DrawLine(startLocation, neighborLocation, Color.green);
+            }
+        }
+
+        message += "\n";
+        message += $"draw bridges links\n";
+        Debug.Log(message);
+    }
+
+    private void DrawAllClusters()
+    {
+        for (int i = 0; i < m_GridClustered.NbClustersOnRows; i++)
+        {
+            for (int j = 0; j < m_GridClustered.NbClustersOnColumns; j++)
+            {
+                DrawOneCluster(i, j);
+            }
+        }
     }
     #endregion
 
@@ -158,14 +259,36 @@ public class PlayerController : MonoBehaviour
     [Header("Inputs")]
     [SerializeField] private PlayerInputs m_PlayerInputs = null;
 
-    [Header("Grid reference")]
-    [SerializeField] private GridCreator m_GridCreator = null;
+    [Header("Grid Settings")]
+    [SerializeField] private GridManager m_GridCreator = null;
+
+    [Header("Start Tile")]
     [SerializeField] private int m_RowStart = 0;
     [SerializeField] private int m_ColumnStart = 0;
+
+    [Header("End Tile")]
     [SerializeField] private int m_RowEnd = 0;
     [SerializeField] private int m_ColumnEnd = 0;
 
+    [Header("Clusters Settings")]
+    [SerializeField] private DisplayBridgeMode m_DisplayBridgeMode = DisplayBridgeMode.DB_None;
+    [SerializeField] private int m_SizeClusterRows = 0;
+    [SerializeField] private int m_SizeClusterColumns = 0;
+    [SerializeField] private int m_RowCluster = 0;
+    [SerializeField] private int m_ColumnCluster = 0;
+
+    private GameGrid m_GameGrid = null;
+    private GridClustered m_GridClustered = null;
     private Tile m_StartTile = null;
     private Tile m_EndTile = null;
+    #endregion
+
+    #region Enumerations
+    private enum DisplayBridgeMode
+    {
+        DB_None,
+        DB_One,
+        DB_All
+    }
     #endregion
 }
