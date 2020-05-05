@@ -10,12 +10,22 @@ public class PathLink : System.IComparable<PathLink>
         m_Weight = 0;
     }
 
+    public PathLink MakeExtensionWith(Tile _NextTile)
+    {
+        PathLink extension = new PathLink(_NextTile);
+        extension.m_PreviousLink = this;
+        extension.m_Weight = this.Weight + _NextTile.Weight;
+        return extension;
+    }
+
+    /**
     public PathLink(PathLink _Previous, Tile _CurrentTile)
     {
         m_PreviousLink = _Previous;
         m_Tile = _CurrentTile;
         m_Weight = m_PreviousLink.m_Weight + m_Tile.Weight;
     }
+    /**/
 
     public int CompareTo(PathLink _Other)
     {
@@ -49,9 +59,9 @@ public class PathLink : System.IComparable<PathLink>
     }
     #endregion
 
-    #region Private Attributes
-    private PathLink m_PreviousLink = null;
-    private Tile m_Tile = null;
-    private int m_Weight = 0;
+    #region Protected Attributes
+    protected PathLink m_PreviousLink = null;
+    protected Tile m_Tile = null;
+    protected int m_Weight = 0;
     #endregion
 }

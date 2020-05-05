@@ -195,7 +195,8 @@ public static class Pathfinder
 
                 // Extend pathlink with the path to extend and the current neighbor
                 extendPathChrono -= chrono.ElapsedMilliseconds;
-                PathLink extendedPath = new PathLink(pathToExtend, neighbor);
+                //PathLink extendedPath = new PathLink(pathToExtend, neighbor);
+                PathLink extendedPath = pathToExtend.MakeExtensionWith(neighbor);
                 extendPathChrono += chrono.ElapsedMilliseconds;
 
                 // Search index to insert extended path in open list
@@ -371,7 +372,8 @@ public static class Pathfinder
                     continue;
 
                 extendPathChrono -= chrono.ElapsedMilliseconds;
-                PathLinkHeuristic extendedLink = new PathLinkHeuristic(linkToExtend, neighbor, Tile.GetManhattanDistance(neighbor, _End));
+                //PathLinkHeuristic extendedLink = new PathLinkHeuristic(linkToExtend, neighbor, Tile.GetManhattanDistance(neighbor, _End));
+                PathLinkHeuristic extendedLink = linkToExtend.MakeExtensionWith(neighbor, Tile.GetManhattanDistance(neighbor, _End));
                 extendPathChrono += chrono.ElapsedMilliseconds;
 
                 searchInsertionChrono -= chrono.ElapsedMilliseconds;

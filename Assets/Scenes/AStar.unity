@@ -982,7 +982,7 @@ PrefabInstance:
     - target: {fileID: 5488686236134641841, guid: 97b4b38f65e8eb741b01fd7b9bc361ac,
         type: 3}
       propertyPath: m_FileName
-      value: Map_64.txt
+      value: Map_512_0.txt
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 97b4b38f65e8eb741b01fd7b9bc361ac, type: 3}

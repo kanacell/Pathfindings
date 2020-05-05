@@ -1,22 +1,27 @@
-﻿
+﻿using System;
 //--------------------------------------//
 // To think how to implement this class //
 //--------------------------------------//
 
-public class CustomPathLinked<T> where T : IWeightable
+public class PathNode<T> : IComparable<PathNode<T>> where T : IWeightable
 {
 	#region public Methods
-	public CustomPathLinked(T _Data)
+	public PathNode(T _Data)
 	{
 		m_Data = _Data;
 	}
 
-	public CustomPathLinked<T> CreateExtensionWith(T _DataToAdd)
+	public PathNode<T> CreateExtensionWith(T _DataToAdd)
 	{
-		CustomPathLinked<T> extension = new CustomPathLinked<T>(_DataToAdd);
+		PathNode<T> extension = new PathNode<T>(_DataToAdd);
 		extension.m_PreviousLink = this;
 		extension.m_Weight += _DataToAdd.Weight();
 		return extension;
+	}
+
+	public int CompareTo(PathNode<T> _Other)
+	{
+		return m_Weight.CompareTo(_Other.m_Weight);
 	}
 	#endregion
 
@@ -39,7 +44,7 @@ public class CustomPathLinked<T> where T : IWeightable
 	#endregion
 
 	#region Private Attributes
-	private CustomPathLinked<T> m_PreviousLink = null;
+	private PathNode<T> m_PreviousLink = null;
 	private T m_Data = default;
 	private int m_Weight = 0;
 	#endregion

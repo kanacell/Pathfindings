@@ -14,4 +14,7 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/TestOnGUI.unity
     guid: da933f0656282604fbcfb6f689c67c95
+  - enabled: 1
+    path: Assets/Scenes/HPA.unity
+    guid: 4980f6fe4225b6a43804866783058a4f
   m_configObjects: {}

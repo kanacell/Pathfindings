@@ -149,7 +149,8 @@ public class Cluster
                 if (!neighbor.IsAccessible || !IsTileInside(neighbor) || closeSet.Contains(neighbor))
                     continue;
 
-                PathLinkHeuristic extension = new PathLinkHeuristic(linkToExtend, neighbor, Tile.GetManhattanDistance(neighbor, _EndTile));
+                //PathLinkHeuristic extension = new PathLinkHeuristic(linkToExtend, neighbor, Tile.GetManhattanDistance(neighbor, _EndTile));
+                PathLinkHeuristic extension = linkToExtend.MakeExtensionWith(neighbor, Tile.GetManhattanDistance(neighbor, _EndTile));
                 int indexInsertion = openList.BinarySearch(extension, comparer);
                 if (indexInsertion < 0)
                 {
