@@ -9,7 +9,6 @@ public static class Pathfinder
     private static float foreachNeighborsChrono = 0f;
     private static float clonePathChrono = 0f;
     private static float extendPathChrono = 0f;
-    private static float searchInOpenListChrono = 0f;
     private static float searchInCloseListChrono = 0f;
     private static float searchInsertionChrono = 0f;
     private static float insertToOpenListChrono = 0f;
@@ -17,6 +16,19 @@ public static class Pathfinder
     private static System.Diagnostics.Stopwatch chrono = new System.Diagnostics.Stopwatch();
 
     #region Public Methods
+    public static PathfindingMode ConvertToPathMode(string _Input)
+    {
+        _Input = "PM_" + _Input;
+        string[] names = System.Enum.GetNames(typeof(PathfindingMode));
+        PathfindingMode[] values = (PathfindingMode[]) System.Enum.GetValues(typeof(PathfindingMode));
+        for (int i = 0; i < names.Length; i++)
+        {
+            if (names[i] == _Input)
+                return values[i];
+        }
+        return PathfindingMode.PM_None;
+    }
+
     /// <summary>
     /// Search a path with Dijkstra algorithm.
     /// </summary>
@@ -48,7 +60,7 @@ public static class Pathfinder
             // It avoids to get infinite loop or too long to find a solution. Mainly usefull to debug
             if (_TimeLimit > 0 && chrono.Elapsed.TotalSeconds > _TimeLimit)
             {
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, false);
                 return null;
             }
 
@@ -58,7 +70,7 @@ public static class Pathfinder
             // If last tile is the end, then return this path
             if (pathToExtend.LastStep == _End)
             {
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, true);
                 return pathToExtend;
             }
 
@@ -119,7 +131,7 @@ public static class Pathfinder
             }
             foreachNeighborsChrono += chrono.ElapsedMilliseconds;
         }
-        _ChronoInfos = StopChrono(_Start, _End);
+        _ChronoInfos = StopChrono(_Start, _End, false);
         return null;
     }
 
@@ -153,7 +165,7 @@ public static class Pathfinder
             // It avoids to get infinite loop or too long to find a solution. Mainly usefull to debug
             if (_TimeLimit > 0 && chrono.Elapsed.TotalSeconds > _TimeLimit)
             {
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, false);
                 return null;
             }
 
@@ -164,7 +176,7 @@ public static class Pathfinder
             // If the end is reach, return solution
             if (tileToExtend == _End)
             {
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, true);
                 return Path.CreatePath(pathToExtend);
             }
 
@@ -216,7 +228,7 @@ public static class Pathfinder
             foreachNeighborsChrono += chrono.ElapsedMilliseconds;
         }
 
-        _ChronoInfos = StopChrono(_Start, _End);
+        _ChronoInfos = StopChrono(_Start, _End, false);
         return null;
     }
 
@@ -247,7 +259,7 @@ public static class Pathfinder
         {
             if (_MaxSeconds > 0 && chrono.Elapsed.TotalSeconds > _MaxSeconds)
             {
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, false);
                 return null;
             }
 
@@ -260,7 +272,7 @@ public static class Pathfinder
             Tile tileToExtend = pathToExtend.LastStep;
             if (tileToExtend == _End)
             {
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, true);
                 return pathToExtend;
             }
 
@@ -304,7 +316,7 @@ public static class Pathfinder
             foreachNeighborsChrono += chrono.ElapsedMilliseconds;
         }
 
-        _ChronoInfos = StopChrono(_Start, _End);
+        _ChronoInfos = StopChrono(_Start, _End, false);
         return null;
     }
 
@@ -335,14 +347,14 @@ public static class Pathfinder
         {
             if (_MaxSeconds > 0 && chrono.Elapsed.TotalSeconds > _MaxSeconds)
             {
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, false);
                 return null;
             }
 
             PathLinkHeuristic linkToExtend = openList.First();
             if (linkToExtend.Tile == _End)
             {
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, true);
                 createSolutionChrono -= chrono.ElapsedMilliseconds;
                 Path solution = Path.CreatePath(linkToExtend);
                 createSolutionChrono += chrono.ElapsedMilliseconds;
@@ -391,7 +403,7 @@ public static class Pathfinder
             foreachNeighborsChrono += chrono.ElapsedMilliseconds;
         }
 
-        _ChronoInfos = StopChrono(_Start, _End);
+        _ChronoInfos = StopChrono(_Start, _End, false);
         return null;
     }
 
@@ -407,7 +419,7 @@ public static class Pathfinder
     {
         StartChrono();
 
-        if (_Start == null || !_Start.IsAccessible || _End == null || !_End.IsAccessible)
+        if (_Start == null || !_Start.IsAccessible || _End == null || !_End.IsAccessible || _GridClustered == null)
         {
             _ChronoInfos = ChronoInfos.InfosNone;
             return null;
@@ -418,7 +430,7 @@ public static class Pathfinder
         Path instantSolution = null;
         if (startCluster == endCluster && (instantSolution = startCluster.ComputeInternalPathFromTo(_Start, _End)) != null)
         {
-            _ChronoInfos = StopChrono(_Start, _End);
+            _ChronoInfos = StopChrono(_Start, _End, true);
             return instantSolution;
         }
 
@@ -462,7 +474,7 @@ public static class Pathfinder
         {
             if (_MaxSeconds > 0 && chrono.Elapsed.TotalSeconds > _MaxSeconds)
             {
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, false);
                 return null;
             }
 
@@ -480,7 +492,7 @@ public static class Pathfinder
                 Path solution = stepToExtend.CreateCompletePath(_GridClustered, allFirstParts, allLastParts);
                 createSolutionChrono += chrono.ElapsedMilliseconds;
 
-                _ChronoInfos = StopChrono(_Start, _End);
+                _ChronoInfos = StopChrono(_Start, _End, true);
                 return solution;
             }
 
@@ -551,7 +563,7 @@ public static class Pathfinder
         }
 
         // No path found in limited time
-        _ChronoInfos = StopChrono(_Start, _End);
+        _ChronoInfos = StopChrono(_Start, _End, false);
         return null;
     }
     #endregion
@@ -562,7 +574,6 @@ public static class Pathfinder
         removeFromOpenChrono = 0f;
         foreachNeighborsChrono = 0f;
         searchInCloseListChrono = 0f;
-        searchInOpenListChrono = 0f;
         clonePathChrono = 0f;
         extendPathChrono = 0f;
         searchInsertionChrono = 0f;
@@ -571,27 +582,15 @@ public static class Pathfinder
         chrono.Restart();
     }
 
-    private static ChronoInfos StopChrono(Tile _Start, Tile _End)
+    private static ChronoInfos StopChrono(Tile _Start, Tile _End, bool _PathFound)
     {
         chrono.Stop();
-        string log = $"from [{_Start.Row}, {_Start.Column}] to [{_End.Row}, {_End.Column}]\n";
-        log += $"elasped time : {chrono.ElapsedMilliseconds} ms\n";
-        log += $"visit all neighbors : {foreachNeighborsChrono} ms\n";
-        log += $"clone path to extend : {clonePathChrono} ms\n";
-        log += $"extend path : {extendPathChrono} ms\n";
-        log += $"search in open list : {searchInOpenListChrono} ms\n";
-        log += $"search in close list : {searchInCloseListChrono} ms\n";
-        log += $"search in open list to insert : {searchInsertionChrono} ms\n";
-        log += $"insert to open list : {insertToOpenListChrono} ms\n";
-        log += $"create solution : {createSolutionChrono} ms\n";
-        Debug.Log(log);
-
         ChronoInfos infos = new ChronoInfos();
+        infos.PathFound = _PathFound;
         infos.ElapsedTime = chrono.ElapsedMilliseconds;
         infos.ForeachNeighborsChrono = foreachNeighborsChrono;
         infos.ClonePathChrono = clonePathChrono;
         infos.ExtendPathChrono = extendPathChrono;
-        infos.SearchInOpenListChrono = searchInOpenListChrono;
         infos.SearchInCloseListChrono = searchInCloseListChrono;
         infos.SearchInsertionChrono = searchInsertionChrono;
         infos.InsertToOpenListChrono = insertToOpenListChrono;

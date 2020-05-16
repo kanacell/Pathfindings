@@ -13,6 +13,8 @@ public class PlayerInputs : MonoBehaviour
 	#region Private Methods
 	private void Update()
 	{
+		OnHovered?.Invoke(Input.mousePosition);
+
 		if (Input.GetMouseButtonDown(0))
 		{
 			OnLeftClic?.Invoke(Input.mousePosition);
@@ -38,6 +40,7 @@ public class PlayerInputs : MonoBehaviour
 	#endregion
 
 	#region Public Attributes
+	public event System.Action<Vector3> OnHovered;
 	public event System.Action<Vector3> OnLeftClic;
 	public event System.Action<Vector3> OnRightClic;
 	public event System.Action<float> OnHorizontalMove;

@@ -42,6 +42,13 @@ public class GameGrid
         _Renderer.ApplyRenderer();
     }
 
+    public GameGrid(GameGrid _GridToCopy)
+    {
+        m_TilesRows = _GridToCopy.TilesRows;
+        m_TilesColumns = _GridToCopy.TilesColumns;
+        m_Tiles = _GridToCopy.Tiles;
+    }
+
     public Tile GetTileAt(int _Row, int _Column)
     {
         int indexTile = GetTileIndexOf(_Row, _Column);
@@ -74,6 +81,14 @@ public class GameGrid
         get
         {
             return m_TilesColumns;
+        }
+    }
+
+    public Tile[] Tiles
+    {
+        get
+        {
+            return m_Tiles;
         }
     }
     #endregion

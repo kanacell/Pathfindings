@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-public class GridManager : MonoBehaviour
+public class GridMaker : MonoBehaviour
 {
 	#region Public Methods
 
@@ -19,8 +19,17 @@ public class GridManager : MonoBehaviour
 	public GridClustered CreateGridClustered(int _SizeClusterRows, int _SizeClusterColumns)
 	{
 		string pathFile = $@"{Application.persistentDataPath}/Maps/{m_FileName}";
-		GridClustered grid = new GridClustered(pathFile, m_GridRenderer);
-		grid.GenerateClusters(_SizeClusterRows, _SizeClusterColumns);
+		GridClustered grid = new GridClustered(pathFile, m_GridRenderer, _SizeClusterRows, _SizeClusterColumns);
+		return grid;
+	}
+
+	public GameGrid CreateGrid(string _MapName)
+	{
+		if (_MapName == string.Empty)
+			return null;
+
+		string pathFile = $@"{Application.persistentDataPath}/Maps/{_MapName}";
+		GameGrid grid = new GameGrid(pathFile, m_GridRenderer);
 		return grid;
 	}
 	#endregion

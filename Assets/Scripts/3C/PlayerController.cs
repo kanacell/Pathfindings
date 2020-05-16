@@ -1,72 +1,9 @@
-﻿using System.Linq;
-using TMPro;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 
 public class PlayerController : MonoBehaviour
 {
     #region Public Methods
-    public void SearchPath()
-    {
-        if (m_StartTile == null)
-        {
-            m_StartTile = m_GameGrid.GetTileAt(m_RowStart, m_ColumnStart);
-        }
-
-        if (m_EndTile == null)
-        {
-            m_EndTile = m_GameGrid.GetTileAt(m_RowEnd, m_ColumnEnd);
-        }
-
-        m_PathVisualizer.gameObject.SetActive(false);
-
-        Path path = null;
-        ChronoInfos infos = new ChronoInfos();
-        float timeLimit = m_HasLimitSearchTime ? m_TimeLimit : -1;
-        switch (m_PathfindingMode)
-        {
-            case Pathfinder.PathfindingMode.PM_Dijkstra:
-                path = Pathfinder.SearchDijkstraPathFromTo(m_StartTile, m_EndTile, out infos, timeLimit);
-                break;
-            case Pathfinder.PathfindingMode.PM_Dijkstra_LinkOpti:
-                path = Pathfinder.SearchDisjktraPathFromTo_LinkOpti(m_StartTile, m_EndTile, out infos, timeLimit);
-                break;
-            case Pathfinder.PathfindingMode.PM_AStar:
-                path = Pathfinder.AStarCustomBasic(m_StartTile, m_EndTile, out infos, timeLimit);
-                break;
-            case Pathfinder.PathfindingMode.PM_AStar_LinkOpti:
-                path = Pathfinder.AStar_LinkOpti(m_StartTile, m_EndTile, out infos, timeLimit);
-                break;
-            case Pathfinder.PathfindingMode.PM_HPA:
-                path = Pathfinder.SearchHPAFromTo(m_GridClustered, m_StartTile, m_EndTile, out infos, timeLimit);
-                break;
-            default:
-                break;
-        }
-
-        if (m_ChronoText)
-        {
-            m_ChronoText.text = $"path found : {path != null}\n";
-            m_ChronoText.text += $"elasped time : {infos.ElapsedTime} ms\n";
-            m_ChronoText.text += $"foreach neighbors : {infos.ForeachNeighborsChrono} ms\n";
-            m_ChronoText.text += $"clone path : {infos.ClonePathChrono} ms\n";
-            m_ChronoText.text += $"extend path : { infos.ExtendPathChrono} ms\n";
-            m_ChronoText.text += $"search open : {infos.SearchInOpenListChrono} ms\n";
-            m_ChronoText.text += $"search close : {infos.SearchInCloseListChrono} ms\n";
-            m_ChronoText.text += $"search open to insert : {infos.SearchInsertionChrono} ms\n";
-            m_ChronoText.text += $"insert open list : {infos.InsertToOpenListChrono} ms\n";
-            m_ChronoText.text += $"create solution : {infos.CreateSolutionChrono} ms\n";
-        }
-
-        if (path != null)
-        {
-            if (!m_PathVisualizer)
-                return;
-
-            m_PathVisualizer.gameObject.SetActive(true);
-            m_PathVisualizer.TracePath(path, m_GameGrid.TilesRows);
-        }
-    }
     #endregion
 
     #region Private Methods
@@ -79,6 +16,7 @@ public class PlayerController : MonoBehaviour
 
         if (m_PlayerInputs)
         {
+            m_PlayerInputs.OnHovered += HoverTile;
             m_PlayerInputs.OnLeftClic += MarkAsStart;
             m_PlayerInputs.OnRightClic += MarkAsEnd;
         }
@@ -86,18 +24,30 @@ public class PlayerController : MonoBehaviour
         m_StartMark?.gameObject.SetActive(false);
         m_EndMark?.gameObject.SetActive(false);
 
-        if (m_PathfindingMode == Pathfinder.PathfindingMode.PM_HPA)
+        if (m_Hud)
         {
-            m_GameGrid = m_GridCreator.CreateGridClustered(m_SizeClusterRows, m_SizeClusterColumns);
-            m_GridClustered = m_GameGrid as GridClustered;
-            Debug.Log($"clusters : {m_GridClustered.Clusters.Length}");
+            m_Hud.OnCreateMap += GenerateMap;
+            m_Hud.OnGenerateCluster += GenerateClusters;
+            m_Hud.OnSearch += SearchPath;
         }
-        else
+
+        if (m_AutoGenerateMap)
         {
-            m_GameGrid = m_GridCreator.CreateGrid();
+            if (m_PathfindingMode == Pathfinder.PathfindingMode.PM_HPA)
+            {
+                m_GameGrid = m_GridMaker.CreateGridClustered(m_SizeClusterRows, m_SizeClusterColumns);
+                m_GridClustered = m_GameGrid as GridClustered;
+                Debug.Log($"clusters : {m_GridClustered.Clusters.Length}");
+            }
+            else
+            {
+                m_GameGrid = m_GridMaker.CreateGrid();
+            }
+            Camera.main.transform.position = new Vector3(m_GameGrid.TilesColumns / 2f, 10, m_GameGrid.TilesRows / 2f);
+            Camera.main.orthographicSize = Mathf.Max(m_GameGrid.TilesRows, m_GameGrid.TilesColumns) / 2f + 1;
         }
-        Camera.main.transform.position = new Vector3(m_GameGrid.TilesColumns / 2f, 10, m_GameGrid.TilesRows / 2f);
-        Camera.main.orthographicSize = Mathf.Max(m_GameGrid.TilesRows, m_GameGrid.TilesColumns) / 2f + 1;
+
+
     }
 
     private void Update()
@@ -120,6 +70,26 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void HoverTile(Vector3 _ScreenPos)
+    {
+        if (EventSystem.current.IsPointerOverGameObject())
+            return;
+
+        Ray screenRay = Camera.main.ScreenPointToRay(_ScreenPos);
+        RaycastHit hitInfos;
+        if (Physics.Raycast(screenRay, out hitInfos, 100))
+        {
+            Tile t = GetNearestTileTo(hitInfos.point);
+            m_Hud?.SetHoveredCoords(t);
+            PlaceMarkerAt(m_HoverMark, t);
+        }
+        else
+        {
+            m_HoverMark?.gameObject.SetActive(false);
+            m_Hud?.CancelHoveredCoords();
+        }
+    }
+
     private void MarkAsStart(Vector3 _ScreenPos)
     {
         if (EventSystem.current.IsPointerOverGameObject())
@@ -134,6 +104,7 @@ public class PlayerController : MonoBehaviour
                 return;
 
             m_StartTile = t;
+            m_Hud?.SetStartCoords(m_StartTile);
             PlaceMarkerAt(m_StartMark, m_StartTile);
         }
     }
@@ -152,6 +123,7 @@ public class PlayerController : MonoBehaviour
                 return;
 
             m_EndTile = t;
+            m_Hud?.SetEndCoords(m_EndTile);
             PlaceMarkerAt(m_EndMark, m_EndTile);
         }
     }
@@ -165,12 +137,72 @@ public class PlayerController : MonoBehaviour
 
     private void PlaceMarkerAt(Transform _Marker, Tile _TileAbove)
     {
+        if (!_Marker)
+            return;
+
         _Marker.gameObject.SetActive(true);
 
         float x = _TileAbove.Column + 0.5f;
         float z = m_GameGrid.TilesRows - _TileAbove.Row - 1 + 0.5f;
         _Marker.position = new Vector3(x, 0, z); ;
     }
+
+    private void SearchPath(Pathfinder.PathfindingMode _SearchMode)
+    {
+        Debug.Log(_SearchMode);
+
+        /**
+        if (m_StartTile == null)
+        {
+            m_StartTile = m_GameGrid.GetTileAt(m_RowStart, m_ColumnStart);
+        }
+
+        if (m_EndTile == null)
+        {
+            m_EndTile = m_GameGrid.GetTileAt(m_RowEnd, m_ColumnEnd);
+        }
+        /**/
+
+        if (m_PathVisualizer)
+        {
+            m_PathVisualizer.gameObject.SetActive(false);
+        }
+
+        Path path = null;
+        ChronoInfos infos = new ChronoInfos();
+        float timeLimit = m_HasLimitSearchTime ? m_TimeLimit : -1;
+        switch (_SearchMode)
+        {
+            case Pathfinder.PathfindingMode.PM_Dijkstra:
+                path = Pathfinder.SearchDijkstraPathFromTo(m_StartTile, m_EndTile, out infos, timeLimit);
+                break;
+            case Pathfinder.PathfindingMode.PM_Dijkstra_LinkOpti:
+                path = Pathfinder.SearchDisjktraPathFromTo_LinkOpti(m_StartTile, m_EndTile, out infos, timeLimit);
+                break;
+            case Pathfinder.PathfindingMode.PM_AStar:
+                path = Pathfinder.AStarCustomBasic(m_StartTile, m_EndTile, out infos, timeLimit);
+                break;
+            case Pathfinder.PathfindingMode.PM_AStar_LinkOpti:
+                path = Pathfinder.AStar_LinkOpti(m_StartTile, m_EndTile, out infos, timeLimit);
+                break;
+            case Pathfinder.PathfindingMode.PM_HPA:
+                path = Pathfinder.SearchHPAFromTo(m_GridClustered, m_StartTile, m_EndTile, out infos, timeLimit);
+                break;
+            default:
+                break;
+        }
+
+        Debug.Log(infos.ToLogMessage());
+
+        m_Hud?.SetChronoLog(infos);
+
+        if (m_PathVisualizer && path != null)
+        {
+            m_PathVisualizer.gameObject.SetActive(true);
+            m_PathVisualizer.TracePath(path, m_GameGrid.TilesRows);
+        }
+    }
+
 
     private void DrawClustersLimits()
     {
@@ -240,6 +272,31 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
+
+    private void GenerateMap(string _MapName)
+    {
+        if (!m_GridMaker)
+            return;
+
+        m_GameGrid = m_GridMaker.CreateGrid(_MapName);
+        m_GridClustered = null;
+
+        if (m_GameGrid == null)
+            return;
+
+        Camera.main.transform.position = new Vector3(m_GameGrid.TilesColumns / 2f, 10, m_GameGrid.TilesRows / 2f);
+        Camera.main.orthographicSize = Mathf.Max(m_GameGrid.TilesRows, m_GameGrid.TilesColumns) / 2f + 1;
+    }
+
+    private void GenerateClusters(int _RowsSize, int _ColumnsSize)
+    {
+        if (m_GameGrid == null)
+            return;
+
+        m_GridClustered = new GridClustered(m_GameGrid, _RowsSize, _ColumnsSize);
+        m_SizeClusterRows = _RowsSize;
+        m_SizeClusterColumns = _ColumnsSize;
+    }
     #endregion
 
     #region Private Attributes
@@ -248,19 +305,21 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float m_TimeLimit = 1f;
     [SerializeField] private bool m_HasLimitSearchTime = true;
 
-    [Header("Path UI")]
-    [SerializeField] private TextMeshProUGUI m_ChronoText = null;
+    [Header("HUD")]
+    [SerializeField] private Hud m_Hud = null;
 
     [Header("Path Visualizer")]
     [SerializeField] private Transform m_StartMark = null;
     [SerializeField] private Transform m_EndMark = null;
+    [SerializeField] private Transform m_HoverMark = null;
     [SerializeField] private PathVisualizer m_PathVisualizer = null;
 
     [Header("Inputs")]
     [SerializeField] private PlayerInputs m_PlayerInputs = null;
 
     [Header("Grid Settings")]
-    [SerializeField] private GridManager m_GridCreator = null;
+    [SerializeField] private bool m_AutoGenerateMap = false;
+    [SerializeField] private GridMaker m_GridMaker = null;
 
     [Header("Start Tile")]
     [SerializeField] private int m_RowStart = 0;

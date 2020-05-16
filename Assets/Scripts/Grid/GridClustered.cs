@@ -6,13 +6,21 @@ using UnityEngine;
 public class GridClustered : GameGrid
 {
     #region Public Methods
-    public GridClustered(string _FileName, GridRenderer _Renderer) : base(_FileName, _Renderer)
+    public GridClustered(string _FileName, GridRenderer _Renderer, int _SizeClusterRows, int _SizeClusterColumns) : base(_FileName, _Renderer)
     {
+        GenerateClusters(_SizeClusterRows, _SizeClusterColumns);
+    }
 
+    public GridClustered(GameGrid _GameGrid, int _SizeClusterRows, int _SizeClusterColumns) : base (_GameGrid)
+    {
+        GenerateClusters(_SizeClusterRows, _SizeClusterColumns);
     }
 
     public void GenerateClusters(int _SizeClusterRows, int _SizeClusterColumns)
     {
+        if (_SizeClusterRows < 1 || _SizeClusterColumns < 1)
+            return;
+
         m_BaseClusterSizeRows = _SizeClusterRows;
         m_NbClustersOnRows = TilesRows / m_BaseClusterSizeRows;
         if (TilesRows % m_BaseClusterSizeRows > 0)
