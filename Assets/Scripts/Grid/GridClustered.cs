@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
 
 public class GridClustered : GameGrid
@@ -18,8 +20,13 @@ public class GridClustered : GameGrid
 
     public void GenerateClusters(int _SizeClusterRows, int _SizeClusterColumns)
     {
+
         if (_SizeClusterRows < 1 || _SizeClusterColumns < 1)
             return;
+
+        System.Diagnostics.Stopwatch chrono = new System.Diagnostics.Stopwatch();
+        float generationClusterTimer = 0f;
+        chrono.Restart();
 
         m_BaseClusterSizeRows = _SizeClusterRows;
         m_NbClustersOnRows = TilesRows / m_BaseClusterSizeRows;
@@ -60,10 +67,39 @@ public class GridClustered : GameGrid
             }
         }
 
+        /**/
         for (int i = 0; i < m_Clusters.Length; i++)
         {
+            //m_Clusters[i].GenerateBridges();
             m_Clusters[i].LinkBridges();
         }
+        /**/
+
+        /**
+        NativeArray<ClusterWrapper> clusterWrappers = new NativeArray<ClusterWrapper>(m_Clusters.Length, Allocator.Temp);
+
+        for (int i  = 0; i < m_Clusters.Length; i++)
+        {
+            clusterWrappers[i] = new ClusterWrapper
+            {
+                m_Cluster = m_Clusters[i],
+            };
+        }
+
+        ClustersInitializerParallelJob clusterInitializerParallelJob = new ClustersInitializerParallelJob
+        {
+            clusters = clusterWrappers,
+        };
+
+        JobHandle jobHandle =  clusterInitializerParallelJob.Schedule(m_Clusters.Length, 4);
+        jobHandle.Complete();
+        /**/
+
+        chrono.Stop();
+        generationClusterTimer = chrono.ElapsedMilliseconds;
+
+        string message = $"clusters generation : {generationClusterTimer}ms";
+        Debug.Log(message);
     }
 
     public Cluster GetClusterAt(int _RowCluster, int _ColumnCluster)
@@ -132,4 +168,20 @@ public class GridClustered : GameGrid
     private int m_BaseClusterSizeColumns = 0;
     private Cluster[] m_Clusters = null;
     #endregion
+}
+
+public struct ClustersInitializerParallelJob : IJobParallelFor
+{
+    public NativeArray<ClusterWrapper> clusters;
+    public void Execute(int _Index)
+    {
+        //clusters[_Index].m_Cluster.GenerateBridges();
+        //clusters[_Index].m_Cluster.LinkBridges();
+    }
+}
+
+public struct ClusterWrapper
+{
+    //public Cluster m_Cluster;
+    public int value;
 }

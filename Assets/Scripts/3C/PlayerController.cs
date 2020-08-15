@@ -26,7 +26,7 @@ public class PlayerController : MonoBehaviour
 
         if (m_Hud)
         {
-            m_Hud.OnCreateMap += GenerateMap;
+            m_Hud.CreateMapFromFile += GenerateMap;
             m_Hud.OnGenerateCluster += GenerateClusters;
             m_Hud.OnSearch += SearchPath;
         }

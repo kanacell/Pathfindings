@@ -93,6 +93,14 @@ public class Cluster
         }
     }
 
+    public void GenerateBridges()
+    {
+        GenerateHorizontalBridges(m_AnchorColumn, -1);
+        GenerateHorizontalBridges(GetLastValidColumn(), 1);
+        GenerateVerticalBridges(m_AnchorRow, -1);
+        GenerateVerticalBridges(GetLastValidRow(), 1);
+    }
+
     public void LinkBridges()
     {
         for (int i = 0; i < m_Bridges.Count; i++)
@@ -165,10 +173,96 @@ public class Cluster
     }
     #endregion
 
-    #region Protected Methods
-    #endregion
-
     #region Private Methods
+    private void GenerateHorizontalBridges(int _StartColumn, int _Offset)
+    {
+        int offsetRow = 0;
+        int rowBeginPart = -1;
+        while (offsetRow < m_SizeRows && m_AnchorRow + offsetRow < m_OwnerGrid.TilesRows)
+        {
+            Tile currentTile = m_OwnerGrid.GetTileAt(m_AnchorRow + offsetRow, _StartColumn);
+            Tile nextTile = m_OwnerGrid.GetTileAt(m_AnchorRow + offsetRow, _StartColumn + _Offset);
+            if (currentTile.IsAccessible && nextTile.IsAccessible)
+            {
+                if (rowBeginPart == -1)
+                {
+                    rowBeginPart = m_AnchorRow + offsetRow;
+                }
+            }
+            else if (rowBeginPart != -1)
+            {
+                int rowBridge = (rowBeginPart + m_AnchorRow + offsetRow - 1) / 2;
+                Tile startBridge = m_OwnerGrid.GetTileAt(rowBridge, _StartColumn);
+                Tile endBridge = m_OwnerGrid.GetTileAt(rowBridge, _StartColumn + _Offset);
+                m_Bridges.Add(new Bridge(startBridge, endBridge));
+                rowBeginPart = -1;
+            }
+            offsetRow++;
+            currentTile = m_OwnerGrid.GetTileAt(m_AnchorRow + offsetRow, _StartColumn);
+        }
+        if (rowBeginPart != -1)
+        {
+            int rowBridge = (rowBeginPart + m_AnchorRow + offsetRow - 1) / 2;
+            Tile startBridge = m_OwnerGrid.GetTileAt(rowBridge, _StartColumn);
+            Tile endBridge = m_OwnerGrid.GetTileAt(rowBridge, _StartColumn + _Offset);
+            m_Bridges.Add(new Bridge(startBridge, endBridge));
+        }
+    }
+
+    private void GenerateVerticalBridges(int _StartRow, int _Offset)
+    {
+        int offsetColumn = 0;
+        int columnBeginPart = -1;
+        while (offsetColumn < m_SizeColumns && m_AnchorColumn + offsetColumn < m_OwnerGrid.TilesColumns)
+        {
+            Tile currentTile = m_OwnerGrid.GetTileAt(_StartRow, m_AnchorColumn + offsetColumn);
+            Tile upNeighbor = m_OwnerGrid.GetTileAt(_StartRow + _Offset, m_AnchorColumn + offsetColumn);
+            if (currentTile.IsAccessible && upNeighbor.IsAccessible)
+            {
+                if (columnBeginPart == -1)
+                {
+                    columnBeginPart = m_AnchorColumn + offsetColumn;
+                }
+            }
+            else if (columnBeginPart != -1)
+            {
+                int columnBridge = (columnBeginPart + m_AnchorColumn + offsetColumn - 1) / 2;
+                Tile startBridge = m_OwnerGrid.GetTileAt(_StartRow, columnBridge);
+                Tile endBridge = m_OwnerGrid.GetTileAt(_StartRow  + _Offset, columnBridge);
+                m_Bridges.Add(new Bridge(startBridge, endBridge));
+                columnBeginPart = -1;
+            }
+            offsetColumn++;
+        }
+
+        if (columnBeginPart != -1)
+        {
+            int columnBridge = (columnBeginPart + m_AnchorColumn + offsetColumn - 1) / 2;
+            Tile startBridge = m_OwnerGrid.GetTileAt(_StartRow, columnBridge);
+            Tile endBridge = m_OwnerGrid.GetTileAt(_StartRow + _Offset, columnBridge);
+            m_Bridges.Add(new Bridge(startBridge, endBridge));
+        }
+    }
+
+    private int GetLastValidColumn()
+    {
+        int validColumn = m_AnchorColumn;
+        while(validColumn + 1 < m_OwnerGrid.TilesColumns)
+        {
+            validColumn++;
+        }
+        return validColumn;
+    }
+
+    private int GetLastValidRow()
+    {
+        int validRow = m_AnchorRow;
+        while(validRow + 1 < m_OwnerGrid.TilesRows)
+        {
+            validRow++;
+        }
+        return validRow;
+    }
     #endregion
 
     #region Getters/Setters

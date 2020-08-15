@@ -64,7 +64,7 @@ public class Hud : MonoBehaviour
 
 	private void GenerateMap()
 	{
-		OnCreateMap?.Invoke(m_MapNameInputField.text);
+		CreateMapFromFile?.Invoke(m_MapNameInputField.text);
 	}
 
 	private void GenerateClusters()
@@ -90,6 +90,7 @@ public class Hud : MonoBehaviour
 	[Header("Map Generation")]
 	[SerializeField] private TMP_InputField m_MapNameInputField = null;
 	[SerializeField] private Button m_GenerateMapButton = null;
+	[SerializeField] private MapGeneration m_MapGeneration = null;
 
 	[Header("Clusters Settings")]
 	[SerializeField] private TMP_InputField m_ClusterRowsInputField = null;
@@ -108,7 +109,8 @@ public class Hud : MonoBehaviour
 	#endregion
 
 	#region Events
-	public event System.Action<string> OnCreateMap = null;
+	public event System.Action<string> CreateMapFromFile = null;
+	public event System.Action<int, int> CreateMapFromSize = null;
 	public event System.Action<int, int> OnGenerateCluster = null;
 	public event System.Action<Pathfinder.PathfindingMode> OnSearch = null;
 	#endregion
